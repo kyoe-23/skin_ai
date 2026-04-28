@@ -56,7 +56,7 @@ class ClassifyConfig:
     """
 
     # ── 데이터 ──────────────────────────────────────────────────
-    data_dir: str = field(default_factory=lambda: _env_str("DATA_DIR", "data/processed"))
+    data_dir: str = field(default_factory=lambda: _env_str("DATA_DIR", "data/processed/DS14"))
     num_classes: int = NUM_CLASSES
     class_names: list = field(default_factory=lambda: list(CLASS_NAMES))
 
@@ -118,7 +118,7 @@ class SegmentConfig:
     공식 벤치마크: IoU 0.9210 (목표 0.70)
     """
 
-    data_dir: str = field(default_factory=lambda: _env_str("SEG_DATA_DIR", "data/processed"))
+    data_dir: str = field(default_factory=lambda: _env_str("SEG_DATA_DIR", "data/processed/DS14"))
     mask_dir: str = field(default_factory=lambda: _env_str("SEG_MASK_DIR", "data/masks"))
     target_class: str = "아토피피부염"
     num_classes: int = SEG_NUM_CLASSES

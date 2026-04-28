@@ -1,7 +1,7 @@
 """전처리 완료된 데이터 탐색적 분석(EDA) 시각화.
 
 사용법:
-    python -m ai.preprocessing.aihub_eda --processed_dir data/processed
+    python -m ai.preprocessing.aihub_eda --processed_dir data/processed/DS14
 """
 
 import argparse

@@ -351,8 +351,8 @@ def main():
         help="dataset_14/ 폴더 경로 (기본: data/dataset_14)",
     )
     parser.add_argument(
-        "--output_dir", default="data/processed",
-        help="출력 CSV 저장 경로 (기본: data/processed)",
+        "--output_dir", default="data/processed/DS14",
+        help="출력 CSV 저장 경로 (기본: data/processed/DS14)",
     )
     args = parser.parse_args()
 

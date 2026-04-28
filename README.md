@@ -66,7 +66,18 @@ skin_ai/
 │   │       ├── 01_raw/       #     VS_{클래스}.zip × 15
 │   │       └── 02_label/     #     VL_{클래스}.zip × 15
 │   ├── raw/                  #   ZIP 압축 해제 원본 (gitignored, Drive 경유)
-│   └── processed/            #   전처리 CSV — train.csv / val.csv (git 추적)
+│   └── processed/            #   전처리 결과 (git 추적)
+│       ├── DS14/             #     dataset_14 전처리 결과
+│       │   ├── train.csv     #       학습 CSV
+│       │   ├── val.csv       #       검증 CSV
+│       │   ├── metadata.json #       클래스·통계 메타데이터
+│       │   ├── validation_report.json
+│       │   └── eda/          #       EDA 시각화 결과
+│       └── DS15/             #     dataset_15 전처리 결과
+│           ├── train.csv
+│           ├── val.csv
+│           ├── metadata.json
+│           └── validation_report.json
 │
 ├── train.ipynb               # Colab / 로컬 학습 노트북
 └── setup.py                  # skinai-data pip 패키지 정의
@@ -145,15 +156,18 @@ python -m ai.preprocessing.resize_zips --resume
 ### 4. 전처리 (CSV 생성)
 
 ```bash
-# 원본 사용 시
-python -m ai.preprocessing.aihub_preprocessor --data_root data/dataset_14 --output_dir data/processed
+# dataset_14 원본 사용 시
+python -m ai.preprocessing.aihub_preprocessor --data_root data/dataset_14 --output_dir data/processed/DS14
+
+# dataset_15 원본 사용 시
+python -m ai.preprocessing.aihub_preprocessor --data_root data/dataset_15 --output_dir data/processed/DS15
 
 # 리사이즈 변환본 사용 시
-python -m ai.preprocessing.aihub_preprocessor --data_root data/dataset_256 --output_dir data/processed_256
+python -m ai.preprocessing.aihub_preprocessor --data_root data/dataset_256 --output_dir data/processed/DS14
 
 # 검증 및 EDA
-python -m ai.preprocessing.aihub_validate --processed_dir data/processed
-python -m ai.preprocessing.aihub_eda --processed_dir data/processed
+python -m ai.preprocessing.aihub_validate --processed_dir data/processed/DS14
+python -m ai.preprocessing.aihub_eda --processed_dir data/processed/DS14
 ```
 
 ### 5. 학습
@@ -186,7 +200,7 @@ python -m ai.training.classifier.train_seg
 | `NUM_WORKERS` | 4 | DataLoader 워커 수 |
 | `WARMUP_EPOCHS` | 3 | LR warmup 에폭 |
 | `EARLY_STOPPING_PATIENCE` | 30 | 조기 종료 patience |
-| `DATA_DIR` | data/processed | 전처리 CSV 디렉토리 |
+| `DATA_DIR` | data/processed/DS14 | 전처리 CSV 디렉토리 |
 | `CHECKPOINT_DIR` | ai/results | 체크포인트 저장 경로 |
 | `IMAGE_SIZE` | 256 | 리사이즈 크기 |
 | `CROP_SIZE` | 224 | 크롭 크기 |

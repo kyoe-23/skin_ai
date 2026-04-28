@@ -1,7 +1,7 @@
 """전처리 완료된 CSV 데이터 검증 스크립트.
 
 사용법:
-    python -m ai.preprocessing.aihub_validate --processed_dir data/processed
+    python -m ai.preprocessing.aihub_validate --processed_dir data/processed/DS14
 """
 
 # ── 표준 라이브러리 ──────────────────────────────────────────────

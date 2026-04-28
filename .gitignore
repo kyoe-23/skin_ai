@@ -32,6 +32,9 @@ build/
 #.md
 CLAUDE.md
 
+# Docs
+docs/
+
 # SCIN 레거시 프로젝트
 scin_legacy/data/scin_dataset/
 scin_legacy/data/scin_processed/
@@ -80,3 +83,4 @@ venv/
 ENV/
 env/
 *.egg-info/
+
