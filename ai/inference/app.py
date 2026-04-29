@@ -36,9 +36,13 @@ logger = logging.getLogger(__name__)
 
 # ── Flask 앱 초기화 ──────────────────────────────────────────────
 app = Flask(__name__)
+
+_origins_env = os.environ.get("ALLOWED_ORIGINS", "")
+_allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] if _origins_env else ["*"]
+
 CORS(app, resources={
     r"/*": {
-        "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
+        "origins": _allowed_origins,
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
     }

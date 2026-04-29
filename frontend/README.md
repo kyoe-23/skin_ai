@@ -29,9 +29,6 @@ SkinAI는 안면부 피부질환 6종(건선, 아토피 피부염, 여드름, �
 📁 frontend/
 ├── 📄 README.md
 │
-├── 📁 AI analyze/
-│   ├── 📄 guide
-│   └── 📄 masking_guide.md          # 이미지 마스킹 & 저장 역할 분리 가이드
 │
 ├── 📁 html/                         # HTML 페이지
 │   ├── 📄 login.html                # 로그인
@@ -66,12 +63,63 @@ SkinAI는 안면부 피부질환 6종(건선, 아토피 피부염, 여드름, �
 
 ---
 
+## 로컬 실행 방법
+
+### 사전 준비
+
+- [Node.js](https://nodejs.org/) 18 이상
+
+### 1. 패키지 설치
+
+```bash
+cd backend
+npm install
+```
+
+### 2. 환경변수 설정
+
+`backend/.env.example`을 복사해서 `backend/.env`를 만들고 값을 채웁니다.
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+최소 필수 항목:
+
+| 변수 | 설명 |
+|------|------|
+| `JWT_SECRET` | 랜덤 문자열 (예: `openssl rand -hex 32`) |
+| `SUPABASE_URL` | Supabase 프로젝트 URL |
+| `SUPABASE_KEY` | Supabase anon key |
+| `FRONTEND_URL` | 비밀번호 재설정 링크용 도메인 |
+
+### 3. 서버 실행
+
+```bash
+cd backend
+npm start
+```
+
+### 4. 브라우저에서 열기
+
+```
+http://localhost:3000
+```
+
+> 서버가 `frontend/html`의 정적 파일을 함께 서빙합니다.
+> 별도 빌드 과정 없이 바로 접속할 수 있습니다.
+
+---
+
 ## 기술 스택
 
 | 구분 | 기술 |
 |------|------|
 | Frontend | HTML5, CSS3, Vanilla JS |
+| Backend | Node.js, Express |
+| AI 추론 | Python, Flask, PyTorch |
 | AI 분석 | Claude API + RAG |
+| DB | Supabase (PostgreSQL) |
 
 ---
 
@@ -87,15 +135,3 @@ SkinAI는 안면부 피부질환 6종(건선, 아토피 피부염, 여드름, �
 | 학습 기록 | records.html | 개인 학습 이력 및 통계 |
 | 커뮤니티 | community.html | 케이스 공유 및 토론 |
 | 프로필 | profile.html | 개인 정보 관리 |
-
----
-
-## 개발 예정 기능
-
-- [ ] 비밀번호 찾기 / 재설정 이메일 발송
-- [ ] AI 이미지 분석 API 연동
-- [ ] Claude API + RAG 대화 기능
-- [ ] 학습 기록 대시보드
-- [ ] 교수용 관리자 화면
-
-

@@ -67,7 +67,7 @@ async function handleWithdraw() {
   // TODO: 아래 fetch를 실제 탈퇴 API로 교체
   //
   // const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-  // const res = await fetch('http://localhost:3000/api/auth/withdraw', {
+  // const res = await fetch('/api/auth/withdraw', {
   //   method: 'DELETE',
   //   headers: {
   //     'Content-Type': 'application/json',
