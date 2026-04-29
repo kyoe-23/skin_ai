@@ -336,12 +336,12 @@
       <div class="card">
         <div class="card-title"><div class="card-title-dot"></div> 프로필 사진</div>
         <div class="avatar-section">
-          <div class="avatar-large" id="profileAvatarPreview">김
+          <div class="avatar-large" id="profileAvatarPreview">
             <img id="avatarImg" style="display:none;" alt="프로필 사진">
           </div>
           <div class="avatar-info">
-            <div class="avatar-name" id="previewName">김지현</div>
-            <div class="avatar-role" id="previewRole">전공의 · 서울대학교병원 피부과</div>
+            <div class="avatar-name" id="previewName"></div>
+            <div class="avatar-role" id="previewRole"></div>
             <div class="avatar-btns">
               <label class="avatar-upload-btn">
                 사진 변경
@@ -356,11 +356,11 @@
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">이름</label>
-            <input class="form-input" id="fieldName" type="text" value="김지현" oninput="markDirty()">
+            <input class="form-input" id="fieldName" type="text" value="" oninput="markDirty()">
           </div>
           <div class="form-group">
             <label class="form-label">표시 이름 (닉네임)</label>
-            <input class="form-input" id="fieldNickname" type="text" value="Dr.김" placeholder="커뮤니티에 표시되는 이름" oninput="markDirty()">
+            <input class="form-input" id="fieldNickname" type="text" value="" placeholder="커뮤니티에 표시되는 이름" oninput="markDirty()">
           </div>
           <div class="form-group full">
             <label class="form-label">역할</label>
@@ -390,15 +390,15 @@
           </div>
           <div class="form-group">
             <label class="form-label">소속 기관</label>
-            <input class="form-input" id="fieldInstitution" type="text" value="서울대학교병원" placeholder="병원 또는 대학교" oninput="markDirty()">
+            <input class="form-input" id="fieldInstitution" type="text" value="" placeholder="병원 또는 대학교" oninput="markDirty()">
           </div>
           <div class="form-group">
             <label class="form-label">전공 / 과</label>
-            <input class="form-input" id="fieldDepartment" type="text" value="피부과" placeholder="예: 피부과, 내과" oninput="markDirty()">
+            <input class="form-input" id="fieldDepartment" type="text" value="" placeholder="예: 피부과, 내과" oninput="markDirty()">
           </div>
           <div class="form-group full">
             <label class="form-label">자기소개</label>
-            <textarea class="form-input" id="fieldBio" placeholder="본인을 간략히 소개해주세요 (커뮤니티 프로필에 표시됩니다)" oninput="markDirty()">안면부 피부질환을 공부 중인 피부과 전공의입니다.</textarea>
+            <textarea class="form-input" id="fieldBio" placeholder="본인을 간략히 소개해주세요 (커뮤니티 프로필에 표시됩니다)" oninput="markDirty()"></textarea>
             <span class="form-hint">최대 200자</span>
           </div>
         </div>
@@ -425,7 +425,7 @@
                 인증됨
               </span>
             </label>
-            <input class="form-input" type="email" value="jihyun.kim@snuh.ac.kr" disabled>
+            <input class="form-input" id="fieldCurrentEmail" type="email" value="" disabled>
           </div>
           <hr class="divider" style="grid-column: 1 / -1; margin: 4px 0 4px;">
           <div class="section-label" style="grid-column: 1 / -1; margin-bottom: 0;">이메일 변경</div>
@@ -623,20 +623,20 @@
         <div class="card-title"><div class="card-title-dot"></div> 계정 정보</div>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">계정 ID</label>
-            <input class="form-input" type="text" value="jihyun.kim" disabled>
+            <label class="form-label">이메일 (계정 ID)</label>
+            <input class="form-input" id="fieldAccountId" type="text" value="" disabled>
           </div>
           <div class="form-group">
             <label class="form-label">가입일</label>
-            <input class="form-input" type="text" value="2025년 1월 14일" disabled>
+            <input class="form-input" id="fieldJoinDate" type="text" value="-" disabled>
           </div>
           <div class="form-group">
             <label class="form-label">마지막 로그인</label>
-            <input class="form-input" type="text" value="2026년 4월 9일 오전 9:23" disabled>
+            <input class="form-input" id="fieldLastLogin" type="text" value="-" disabled>
           </div>
           <div class="form-group">
             <label class="form-label">계정 유형</label>
-            <input class="form-input" type="text" value="일반 회원" disabled>
+            <input class="form-input" id="fieldAccountType" type="text" value="" disabled>
           </div>
         </div>
       </div>
@@ -680,11 +680,11 @@
     <div class="side-card">
       <div class="side-title">내 프로필</div>
       <div class="profile-summary">
-        <div class="profile-summary-avatar" id="sidebarAvatar">김
+        <div class="profile-summary-avatar" id="sidebarAvatar">
           <img id="sidebarAvatarImg" style="display:none;" alt="">
         </div>
-        <div class="profile-summary-name" id="sidebarName">김지현</div>
-        <div class="profile-summary-role" id="sidebarInst">서울대학교병원 · 피부과</div>
+        <div class="profile-summary-name" id="sidebarName"></div>
+        <div class="profile-summary-role" id="sidebarInst"></div>
         <span class="role-badge-lg badge-resident" id="sidebarRoleBadge">전공의</span>
       </div>
     </div>
@@ -694,15 +694,15 @@
       <div class="side-title">학습 통계</div>
       <div class="stat-row-grid">
         <div class="mini-stat">
-          <div class="mini-stat-val">42</div>
+          <div class="mini-stat-val" id="statAnalysisCount">--</div>
           <div class="mini-stat-label">총 분석 케이스</div>
         </div>
         <div class="mini-stat">
-          <div class="mini-stat-val">12</div>
+          <div class="mini-stat-val" id="statDiseaseCount">--</div>
           <div class="mini-stat-label">학습 질환 수</div>
         </div>
         <div class="mini-stat">
-          <div class="mini-stat-val">7일</div>
+          <div class="mini-stat-val" id="statStreak">--</div>
           <div class="mini-stat-label">연속 학습</div>
         </div>
       </div>
@@ -714,19 +714,19 @@
       <div class="info-list">
         <div class="info-row">
           <span class="info-label">이메일</span>
-          <span class="info-val">jihyun.kim@…</span>
+          <span class="info-val" id="sideEmail">-</span>
         </div>
         <div class="info-row">
           <span class="info-label">가입일</span>
-          <span class="info-val">2025.01.14</span>
+          <span class="info-val" id="sideJoinDate">-</span>
         </div>
         <div class="info-row">
           <span class="info-label">마지막 로그인</span>
-          <span class="info-val">오늘 09:23</span>
+          <span class="info-val" id="sideLastLogin">-</span>
         </div>
         <div class="info-row">
           <span class="info-label">커뮤니티 게시글</span>
-          <span class="info-val">8개</span>
+          <span class="info-val" id="sidePosts">-</span>
         </div>
       </div>
     </div>

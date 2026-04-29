@@ -1,39 +1,62 @@
 // ── 초기 유저 데이터 로드 ─────────────────────────────
 (function loadUserData() {
-  const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+  const raw = localStorage.getItem('user') || sessionStorage.getItem('user');
+  if (!raw) return;
+  const user = JSON.parse(raw);
   if (!user.name) return;
 
-  const name = user.name;
-  const role = user.role || 'resident';
+  const name        = user.name;
+  const role        = user.role || 'resident';
   const affiliation = user.affiliation || '';
-  const email = user.email || '';
+  const email       = user.email || '';
+  const initial     = name.charAt(0);
 
-  document.getElementById('navAvatar').textContent = name.charAt(0);
-  document.getElementById('profileAvatarPreview').childNodes[0].textContent = name.charAt(0);
-  document.getElementById('sidebarAvatar').childNodes[0].textContent = name.charAt(0);
+  // 네비 아바타 + 프로필 사진 초성
+  document.getElementById('navAvatar').textContent = initial;
+  const avatarPreview = document.getElementById('profileAvatarPreview');
+  if (avatarPreview.childNodes[0]) avatarPreview.childNodes[0].textContent = initial;
+  const sidebarAvatar = document.getElementById('sidebarAvatar');
+  if (sidebarAvatar.childNodes[0]) sidebarAvatar.childNodes[0].textContent = initial;
+
+  // 이름 표시
   document.getElementById('previewName').textContent = name;
   document.getElementById('sidebarName').textContent = name;
-  document.getElementById('avatar-name') && (document.getElementById('avatar-name').textContent = name);
 
+  // 폼 필드
   document.getElementById('fieldName').value = name;
   document.getElementById('fieldInstitution').value = affiliation;
 
-  const roleInput = document.getElementById('role' + role.charAt(0).toUpperCase() + role.slice(1));
+  // 역할 라디오
+  const roleKey = role.charAt(0).toUpperCase() + role.slice(1);
+  const roleInput = document.getElementById('role' + roleKey);
   if (roleInput) roleInput.checked = true;
 
+  // 역할 + 소속 표시
   const instText = affiliation ? ' · ' + affiliation : '';
   document.getElementById('previewRole').textContent = roleLabel(role) + instText;
   document.getElementById('sidebarInst').textContent = affiliation;
   updateRoleBadge(role);
 
+  // 이메일
   if (email) {
-    const emailInput = document.querySelector('input[type="email"][disabled]');
-    if (emailInput) emailInput.value = email;
-    const allInfoVals = document.querySelectorAll('.info-val');
-    allInfoVals.forEach(el => {
-      if (el.textContent.includes('@')) el.textContent = email.replace(/(.{6}).*@/, '$1…@');
-    });
+    const emailDisabled = document.getElementById('fieldCurrentEmail');
+    if (emailDisabled) emailDisabled.value = email;
+
+    // 계정 정보 탭 — 이메일 (계정 ID)
+    const accountIdEl = document.getElementById('fieldAccountId');
+    if (accountIdEl) accountIdEl.value = email;
+
+    // 사이드바 이메일 마스킹
+    const sideEmailEl = document.getElementById('sideEmail');
+    if (sideEmailEl) {
+      const [local, domain] = email.split('@');
+      sideEmailEl.textContent = local.slice(0, 4) + '…@' + domain;
+    }
   }
+
+  // 계정 유형 (역할 기반)
+  const accountTypeEl = document.getElementById('fieldAccountType');
+  if (accountTypeEl) accountTypeEl.value = roleLabel(role) + ' 회원';
 })();
 
 // ── TAB 전환 ──────────────────────────────────────────
@@ -72,19 +95,36 @@ function markDirty() { dirty = true; }
 function saveProfile() {
   const name = document.getElementById('fieldName').value.trim();
   if (!name) { showToast('이름을 입력해주세요', 'error'); return; }
-  // 사이드바 실시간 반영
-  const role = document.querySelector('input[name=role]:checked').value;
-  const inst = document.getElementById('fieldInstitution').value.trim();
-  const dept = document.getElementById('fieldDepartment').value.trim();
+
+  const role    = document.querySelector('input[name=role]:checked').value;
+  const inst    = document.getElementById('fieldInstitution').value.trim();
+  const dept    = document.getElementById('fieldDepartment').value.trim();
+  const initial = name.charAt(0);
+
+  // 화면 반영
   document.getElementById('previewName').textContent = name;
   document.getElementById('sidebarName').textContent = name;
-  document.getElementById('navAvatar').textContent = name.charAt(0);
-  document.getElementById('profileAvatarPreview').childNodes[0].textContent = name.charAt(0);
-  document.getElementById('sidebarAvatar').childNodes[0].textContent = name.charAt(0);
+  document.getElementById('navAvatar').textContent = initial;
+  const avatarPreview = document.getElementById('profileAvatarPreview');
+  if (avatarPreview.childNodes[0]) avatarPreview.childNodes[0].textContent = initial;
+  const sidebarAvatar = document.getElementById('sidebarAvatar');
+  if (sidebarAvatar.childNodes[0]) sidebarAvatar.childNodes[0].textContent = initial;
+
   const instText = [inst, dept].filter(Boolean).join(' · ');
   document.getElementById('previewRole').textContent = roleLabel(role) + (instText ? ' · ' + instText : '');
   document.getElementById('sidebarInst').textContent = (inst || '') + (dept ? ' · ' + dept : '');
   updateRoleBadge(role);
+
+  // localStorage 업데이트 (이름·역할·소속 동기화)
+  const storage = localStorage.getItem('user') ? localStorage : sessionStorage;
+  try {
+    const user = JSON.parse(storage.getItem('user') || '{}');
+    user.name = name;
+    user.role = role;
+    user.affiliation = inst;
+    storage.setItem('user', JSON.stringify(user));
+  } catch (_) {}
+
   dirty = false;
   showToast('프로필이 저장되었어요', 'success');
 }
