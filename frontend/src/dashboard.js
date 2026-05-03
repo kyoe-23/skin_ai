@@ -40,7 +40,17 @@
 
 // ── 역할 레이블 ──────────────────────────────────────
 function roleLabel(v) {
-  return { resident: '전공의', student: '의대생', professor: '교수' }[v] || '';
+  return { resident: '전공의', student: '의대생' }[v] || '';
+}
+
+
+// ── 로그아웃 ──────────────────────────────────────────
+function handleLogout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('user');
+  window.location.href = 'login.html';
 }
 
 

@@ -130,10 +130,10 @@ function saveProfile() {
 }
 
 function roleLabel(v) {
-  return { resident: '전공의', student: '의대생', professor: '교수' }[v] || '';
+  return { resident: '전공의', student: '의대생' }[v] || '';
 }
 function roleBadgeClass(v) {
-  return { resident: 'badge-resident', student: 'badge-student', professor: 'badge-professor' }[v] || '';
+  return { resident: 'badge-resident', student: 'badge-student' }[v] || '';
 }
 function updateRolePreview() {
   const role = document.querySelector('input[name=role]:checked').value;
@@ -244,15 +244,66 @@ function verifyEmailCode() {
 }
 
 // ── 세션 ──────────────────────────────────────────────
-function logoutSession(btn) {
-  btn.closest('.session-item').style.opacity = '0.4';
-  btn.disabled = true;
-  btn.textContent = '로그아웃됨';
-  showToast('해당 기기에서 로그아웃되었어요', 'success');
+function parseDeviceInfo(ua) {
+  let browser = 'Chrome';
+  if (/Firefox\//.test(ua))                          browser = 'Firefox';
+  else if (/Edg\//.test(ua))                         browser = 'Edge';
+  else if (/OPR\/|Opera\//.test(ua))                 browser = 'Opera';
+  else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
+
+  let device = 'Windows';
+  if (/iPhone/.test(ua))      device = 'iPhone';
+  else if (/iPad/.test(ua))   device = 'iPad';
+  else if (/Android/.test(ua)) device = 'Android';
+  else if (/Macintosh/.test(ua)) device = 'Mac';
+  else if (/Linux/.test(ua))  device = 'Linux';
+
+  return { device, browser, label: `${device} · ${browser}` };
 }
 
+function formatLoginTime(isoStr) {
+  if (!isoStr) return '현재 사용 중';
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days  = Math.floor(hours / 24);
+  if (days > 0)  return `${days}일 전 로그인`;
+  if (hours > 0) return `${hours}시간 전 로그인`;
+  if (mins > 0)  return `${mins}분 전 로그인`;
+  return '방금 로그인';
+}
+
+(function renderCurrentSession() {
+  const list = document.getElementById('sessionList');
+  if (!list) return;
+
+  const storage   = localStorage.getItem('token') ? localStorage : sessionStorage;
+  const loginTime = storage.getItem('loginTime');
+  const ua        = navigator.userAgent;
+  const { device, browser, label } = parseDeviceInfo(ua);
+  const isMobile  = /iPhone|iPad|Android/.test(ua);
+
+  const desktopSvg = `<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
+  const mobileSvg  = `<svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18" stroke-width="3" stroke-linecap="round"/></svg>`;
+
+  list.innerHTML = `
+    <div class="session-item">
+      <div class="session-icon">${isMobile ? mobileSvg : desktopSvg}</div>
+      <div class="session-info">
+        <div class="session-device">${label}</div>
+        <div class="session-time">${formatLoginTime(loginTime)}</div>
+      </div>
+      <span class="session-current">현재</span>
+    </div>`;
+})();
+
 function logoutAllSessions() {
-  showToast('모든 기기에서 로그아웃되었어요', 'success');
+  showToast('로그아웃합니다...');
+  setTimeout(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = 'login.html';
+  }, 1000);
 }
 
 // ── 알림 설정 ─────────────────────────────────────────
@@ -260,14 +311,87 @@ function saveNotifSetting() {
   showToast('알림 설정이 저장되었어요');
 }
 
+// ── 공통 인증 헤더 ────────────────────────────────────
+function getAuthHeaders() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  return token ? { 'Authorization': 'Bearer ' + token } : {};
+}
+
 // ── 데이터 관리 ───────────────────────────────────────
-function exportData() {
-  showToast('데이터 파일을 준비 중이에요... 잠시 후 다운로드됩니다');
+async function exportData() {
+  const headers = getAuthHeaders();
+  if (!headers['Authorization']) { showToast('로그인이 필요합니다', 'error'); return; }
+
+  showToast('데이터를 준비하는 중...');
+
+  try {
+    const res = await fetch('/api/analyze/records', { headers });
+    if (!res.ok) throw new Error();
+    const { records } = await res.json();
+
+    if (!records || records.length === 0) {
+      showToast('내보낼 데이터가 없습니다', 'error'); return;
+    }
+
+    const cols = ['번호', '분석일시', '이미지 URL', '마스킹 여부', '상태'];
+    const rows = records.map((r, i) => [
+      i + 1,
+      new Date(r.created_at).toLocaleString('ko-KR'),
+      r.image_url || '',
+      r.is_masked ? '적용됨' : '미적용',
+      r.status || ''
+    ]);
+
+    const csv = [cols, ...rows]
+      .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), {
+      href: url,
+      download: `SkinAI_데이터_${new Date().toISOString().slice(0,10)}.csv`
+    });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast(`${records.length}개 기록을 내보냈어요`, 'success');
+  } catch {
+    showToast('데이터 내보내기에 실패했습니다', 'error');
+  }
 }
 
 function resetRecords() {
-  if (!confirm('모든 학습 기록을 삭제하시겠어요?\n이 작업은 되돌릴 수 없습니다.')) return;
-  showToast('학습 기록이 초기화되었어요');
+  openModal('resetRecordsModal');
+  const btn = document.getElementById('resetRecordsConfirmBtn');
+  btn.disabled = false;
+  btn.textContent = '초기화';
+}
+
+async function confirmResetRecords() {
+  const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+  if (!headers['Authorization']) { showToast('로그인이 필요합니다', 'error'); return; }
+
+  const btn = document.getElementById('resetRecordsConfirmBtn');
+  btn.disabled = true;
+  btn.textContent = '삭제 중...';
+
+  try {
+    const res = await fetch('/api/analyze/records', { method: 'DELETE', headers });
+    if (!res.ok) throw new Error();
+
+    closeModal('resetRecordsModal');
+    showToast('학습 기록이 초기화되었어요', 'success');
+
+    const statEl = document.getElementById('statAnalysisCount');
+    if (statEl) statEl.textContent = '0';
+  } catch {
+    showToast('초기화에 실패했습니다', 'error');
+    btn.disabled = false;
+    btn.textContent = '초기화';
+  }
 }
 
 // ── 계정 탈퇴 ─────────────────────────────────────────
@@ -289,6 +413,11 @@ function closeModal(id) {
   if (id === 'deleteAccountModal') {
     document.getElementById('deleteConfirmInput').value = '';
     document.getElementById('deleteConfirmBtn').disabled = true;
+  }
+  if (id === 'resetRecordsModal') {
+    const btn = document.getElementById('resetRecordsConfirmBtn');
+    btn.disabled = false;
+    btn.textContent = '초기화';
   }
 }
 document.querySelectorAll('.modal-overlay').forEach(el => {

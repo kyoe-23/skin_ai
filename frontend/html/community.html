@@ -6,12 +6,12 @@
 <title>SkinAI - 학습 커뮤니티</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background:#f7f8fa; color:#1a1a2e; min-height:100vh; animation:pageFadeIn 0.3s ease; }
+body { font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background:#f8fafc; color:#1a1a2e; min-height:100vh; animation:pageFadeIn 0.3s ease; }
 @keyframes pageFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
 nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; z-index:200; padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:56px; }
 .nav-logo { display:flex; align-items:center; gap:8px; font-size:17px; font-weight:800; color:#1a1a2e; letter-spacing:-0.4px; }
-.nav-logo-icon { width:30px; height:30px; background:#2563eb; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+.nav-logo-icon { width:30px; height:30px; background:linear-gradient(135deg,#2563eb,#4f46e5); border-radius:8px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(37,99,235,0.35); }
 .nav-logo-icon svg { width:16px; height:16px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .nav-logo span { color:#2563eb; }
 .nav-links { display:flex; align-items:center; gap:4px; }
@@ -34,8 +34,16 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
 .refresh-btn.spinning svg { animation:spin 0.6s linear; }
 .refresh-btn svg { width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; }
 
-.write-btn { padding:10px 18px; background:#2563eb; color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; font-family:inherit; transition:all 0.15s; }
-.write-btn:hover { background:#1d4ed8; }
+.write-btn {
+  padding:10px 18px;
+  background:linear-gradient(135deg,#2563eb,#4f46e5);
+  color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:600;
+  cursor:pointer; display:flex; align-items:center; gap:6px; font-family:inherit;
+  transition:all 0.2s; box-shadow:0 3px 12px rgba(37,99,235,0.35); position:relative; overflow:hidden;
+}
+.write-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 60%); opacity:0; transition:opacity 0.2s; }
+.write-btn:hover::before { opacity:1; }
+.write-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(37,99,235,0.45); }
 
 /* FILTER */
 .filter-bar { display:flex; align-items:center; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
@@ -53,8 +61,8 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
 .empty-feed { text-align:center; padding:60px 20px; color:#c4cad4; font-size:14px; }
 .empty-feed-icon { font-size:40px; margin-bottom:12px; }
 
-.post-card { background:#fff; border:1px solid #e8eaed; border-radius:14px; padding:20px; transition:all 0.15s; animation:fadeUp 0.3s ease; }
-.post-card:hover { border-color:#bfdbfe; box-shadow:0 2px 12px rgba(37,99,235,0.08); }
+.post-card { background:#fff; border:1px solid #e8edf4; border-radius:16px; padding:20px; transition:all 0.18s; animation:fadeUp 0.3s ease; box-shadow:0 1px 3px rgba(0,0,0,0.03); }
+.post-card:hover { border-color:#bfdbfe; box-shadow:0 4px 20px rgba(37,99,235,0.1); transform:translateY(-1px); }
 .post-card-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px; }
 .post-meta { display:flex; align-items:center; gap:8px; }
 .post-avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; flex-shrink:0; }
@@ -62,7 +70,6 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
 .role-badge { padding:2px 7px; border-radius:4px; font-size:10px; font-weight:600; }
 .badge-resident { background:#eff6ff; color:#2563eb; }
 .badge-student { background:#f0fdf4; color:#16a34a; }
-.badge-professor { background:#fdf4ff; color:#9333ea; }
 .post-date { font-size:11px; color:#c4cad4; }
 
 .delete-btn { width:30px; height:30px; border-radius:8px; border:none; background:none; color:#d1d5db; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0; }
@@ -151,9 +158,18 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
 .media-remove { position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,0.6); border:none; color:#fff; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .video-badge { position:absolute; bottom:4px; left:4px; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:600; padding:2px 6px; border-radius:4px; }
 
-.submit-btn { width:100%; padding:15px; background:#2563eb; color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:8px; margin-top:8px; }
-.submit-btn:hover { background:#1d4ed8; }
-.submit-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.submit-btn {
+  width:100%; padding:15px;
+  background:linear-gradient(135deg,#2563eb,#4f46e5);
+  color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:700;
+  cursor:pointer; font-family:inherit; transition:all 0.22s;
+  display:flex; align-items:center; justify-content:center; gap:8px; margin-top:8px;
+  box-shadow:0 4px 20px rgba(37,99,235,0.38); position:relative; overflow:hidden;
+}
+.submit-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 60%); opacity:0; transition:opacity 0.2s; }
+.submit-btn:hover::before { opacity:1; }
+.submit-btn:hover { transform:translateY(-1px); box-shadow:0 8px 28px rgba(37,99,235,0.48); }
+.submit-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
 
 /* UPLOAD OVERLAY */
 .upload-overlay { position:fixed; inset:0; background:rgba(255,255,255,0.92); backdrop-filter:blur(6px); z-index:999; display:none; flex-direction:column; align-items:center; justify-content:center; gap:20px; }

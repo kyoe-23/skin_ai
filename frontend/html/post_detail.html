@@ -8,7 +8,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-    background: #f7f8fa; color: #1a1a2e; min-height: 100vh;
+    background: #f8fafc; color: #1a1a2e; min-height: 100vh;
     animation: pageFadeIn 0.3s ease;
   }
   @keyframes pageFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
@@ -29,7 +29,7 @@
   .wrap { max-width: 720px; margin: 0 auto; padding: 28px 24px 60px; }
 
   /* CARD */
-  .card { background:#fff; border:1px solid #e8eaed; border-radius:16px; padding:22px; margin-bottom:14px; }
+  .card { background:#fff; border:1px solid #e8edf4; border-radius:16px; padding:22px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(37,99,235,0.05); }
   .card-title { font-size:14px; font-weight:700; color:#1a1a2e; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
   .card-title-dot { width:8px; height:8px; border-radius:50%; background:#2563eb; flex-shrink:0; }
 
@@ -46,7 +46,6 @@
   .author-meta { font-size:11px; color:#9ca3af; display:flex; align-items:center; gap:6px; }
   .role-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; }
   .badge-resident { background:#eff6ff; color:#2563eb; }
-  .badge-professor { background:#fdf4ff; color:#9333ea; }
   .badge-student { background:#f0fdf4; color:#16a34a; }
   .post-stats { display:flex; align-items:center; gap:12px; font-size:12px; color:#9ca3af; }
   .stat-item { display:flex; align-items:center; gap:4px; }
@@ -107,9 +106,17 @@
   .write-textarea:focus { border-color:#2563eb; background:#fff; box-shadow:0 0 0 3px rgba(37,99,235,0.1); min-height:80px; }
   .write-textarea::placeholder { color:#c4cad4; }
   .write-footer { display:flex; justify-content:flex-end; margin-top:8px; }
-  .submit-btn { padding:8px 18px; background:#2563eb; color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s; }
-  .submit-btn:hover { background:#1d4ed8; }
-  .submit-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .submit-btn {
+    padding:8px 18px;
+    background:linear-gradient(135deg,#2563eb,#4f46e5);
+    color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit; transition:all 0.2s;
+    box-shadow:0 2px 10px rgba(37,99,235,0.35); position:relative; overflow:hidden;
+  }
+  .submit-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 60%); opacity:0; transition:opacity 0.2s; }
+  .submit-btn:hover::before { opacity:1; }
+  .submit-btn:hover { transform:translateY(-1px); box-shadow:0 5px 16px rgba(37,99,235,0.45); }
+  .submit-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
 
   /* 토스트 */
   .toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:#1a1a2e; color:#fff; padding:11px 20px; border-radius:10px; font-size:13px; font-weight:500; opacity:0; transition:all 0.25s; white-space:nowrap; z-index:999; }
@@ -215,31 +222,7 @@
 
     <div class="comment-list" id="commentList">
 
-      <!-- 댓글 1 (교수) -->
-      <div class="comment-item">
-        <div class="comment-header">
-          <div class="comment-author">
-            <div class="comment-avatar" style="background:linear-gradient(135deg,#7c3aed,#9333ea)">김</div>
-            <div>
-              <div class="comment-name">김OO 교수 <span class="role-badge badge-professor">교수</span></div>
-              <div class="comment-date">2026.04.15 · 14:32</div>
-            </div>
-          </div>
-        </div>
-        <div class="comment-text">Auspitz sign 양성 및 가족력 고려 시 건선 가능성이 높아 보입니다. 지루성 피부염과의 감별을 위해 두피·비순구 병변 여부도 확인해 보시기 바랍니다.</div>
-        <div class="comment-actions">
-          <button class="comment-action-btn" onclick="toggleCommentLike(this)">
-            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            5
-          </button>
-          <button class="comment-action-btn" onclick="showReplyInput(this)">
-            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            답글
-          </button>
-        </div>
-      </div>
-
-      <!-- 댓글 2 -->
+      <!-- 댓글 1 -->
       <div class="comment-item">
         <div class="comment-header">
           <div class="comment-author">

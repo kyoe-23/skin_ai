@@ -4,6 +4,7 @@ const jwt       = require('jsonwebtoken');
 const crypto    = require('crypto');
 const nodemailer = require('nodemailer');
 const supabase  = require('../config/supabase');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -252,6 +253,42 @@ router.post('/reset-password', async (req, res) => {
   } catch (err) {
     console.error('reset-password 오류:', err.message);
     return res.status(500).json({ message: '비밀번호 변경 중 오류가 발생했습니다.' });
+  }
+});
+
+// 회원 탈퇴 — 유저 데이터 전체 삭제
+router.delete('/withdraw', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+
+  try {
+    // 1. Storage 이미지 삭제
+    const { data: files } = await supabase.storage
+      .from('skin-images')
+      .list(String(userId));
+
+    if (files && files.length > 0) {
+      const paths = files.map(f => `${userId}/${f.name}`);
+      await supabase.storage.from('skin-images').remove(paths);
+    }
+
+    // 2. 분석 기록 삭제
+    await supabase.from('analysis_records').delete().eq('user_id', userId);
+
+    // 3. 커뮤니티 데이터 삭제 (테이블이 있는 경우)
+    try {
+      await supabase.from('comments').delete().eq('user_id', userId);
+      await supabase.from('posts').delete().eq('user_id', userId);
+    } catch (_) { /* 테이블 미존재 시 무시 */ }
+
+    // 4. 유저 계정 삭제
+    const { error } = await supabase.from('users').delete().eq('user_id', userId);
+    if (error) throw error;
+
+    return res.json({ message: '계정이 삭제되었습니다.' });
+
+  } catch (err) {
+    console.error('[auth/withdraw]', err.message);
+    return res.status(500).json({ message: '탈퇴 처리 중 오류가 발생했습니다.' });
   }
 });
 

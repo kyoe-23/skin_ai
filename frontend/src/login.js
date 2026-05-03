@@ -1,16 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-  let selectedRole = 'resident';
-
-  // ── 역할 선택 ──
-  document.querySelectorAll('#roleSelect .role-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#roleSelect .role-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedRole = btn.dataset.role;
-    });
-  });
-
   // ── 비밀번호 보기 토글 ──
   document.getElementById('pwToggle').addEventListener('click', () => {
     const input = document.getElementById('pwInput');
@@ -57,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role: selectedRole })
+        body: JSON.stringify({ email, password })
       });
 
       const data = await res.json();
@@ -71,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const storage = remember ? localStorage : sessionStorage;
       storage.setItem('token', data.token);
       storage.setItem('user', JSON.stringify(data.user));
+      storage.setItem('loginTime', new Date().toISOString());
+      storage.setItem('loginUA', navigator.userAgent);
 
       // 성공 UI
       btn.querySelector('.btn-text').textContent = '✓ 로그인 완료';

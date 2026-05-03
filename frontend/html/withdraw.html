@@ -9,7 +9,7 @@
 
   body {
     font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-    background: #f7f8fa; color: #1a1a2e; min-height: 100vh;
+    background: #f8fafc; color: #1a1a2e; min-height: 100vh;
     animation: pageFadeIn 0.3s ease;
   }
   @keyframes pageFadeIn {
@@ -32,7 +32,7 @@
   .nav-back:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
   .nav-back svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .nav-logo { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; color: #1a1a2e; letter-spacing: -0.4px; cursor: pointer; }
-  .nav-logo-icon { width: 30px; height: 30px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .nav-logo-icon { width: 30px; height: 30px; background: linear-gradient(135deg, #2563eb, #4f46e5); border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(37,99,235,0.35); }
   .nav-logo-icon svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .nav-logo span { color: #2563eb; }
 
@@ -53,7 +53,7 @@
   .danger-sub { font-size: 14px; color: #6b7280; line-height: 1.7; }
 
   /* ── CARD ── */
-  .card { background: #fff; border: 1px solid #e8eaed; border-radius: 16px; padding: 24px; margin-bottom: 16px; }
+  .card { background: #fff; border: 1px solid #e8edf4; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(37,99,235,0.05); }
   .card-title {
     font-size: 14px; font-weight: 700; color: #1a1a2e;
     margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
@@ -192,7 +192,13 @@
 
   <!-- 완료 화면 -->
   <div class="done-screen" id="doneScreen">
-    <div class="done-icon">👋</div>
+    <div class="done-icon" style="font-size:0;margin-bottom:24px;">
+      <div style="width:80px;height:80px;border-radius:50%;background:#f0fdf4;border:2px solid #bbf7d0;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+    </div>
     <div class="done-title">탈퇴가 완료됐어요</div>
     <div class="done-sub">그동안 SkinAI를 이용해주셔서 감사합니다.<br>언제든 다시 찾아오실 수 있어요.</div>
   </div>

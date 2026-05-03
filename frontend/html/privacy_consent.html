@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SkinAI - 개인정보 동의</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  background:#f8fafc; color:#1a1a2e; min-height:100vh;
+  padding:32px 20px 60px;
+  display:flex; flex-direction:column; align-items:center;
+  position:relative;
+}
+body::before {
+  content:''; position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 5% 5%, rgba(37,99,235,0.05) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 95% 95%, rgba(124,58,237,0.04) 0%, transparent 55%);
+  pointer-events:none; z-index:0;
+}
+body::after {
+  content:''; position:fixed; inset:0;
+  background-image: radial-gradient(circle, rgba(37,99,235,0.025) 1px, transparent 1px);
+  background-size:28px 28px; pointer-events:none; z-index:0;
+}
+.container { position:relative; z-index:1; }
+
+.container { width:100%; max-width:680px; }
+
+.logo-wrap { text-align:center; margin-bottom:24px; }
+.logo-badge { display:inline-flex; align-items:center; gap:10px; margin-bottom:10px; }
+.logo-icon { width:40px; height:40px; background:linear-gradient(135deg,#2563eb,#4f46e5); border-radius:11px; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(37,99,235,0.35); }
+.logo-icon svg { width:22px; height:22px; fill:none; stroke:#fff; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.logo-text { font-size:22px; font-weight:800; color:#1a1a2e; letter-spacing:-0.5px; }
+.logo-text span { color:#2563eb; }
+.page-title { font-size:20px; font-weight:700; letter-spacing:-0.4px; margin-bottom:4px; }
+.page-sub { font-size:13px; color:#6b7280; line-height:1.6; }
+
+.progress-wrap {
+  background:#fff; border:1px solid #e8eaed;
+  border-radius:12px; padding:16px 20px; margin-bottom:16px;
+}
+.progress-info { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.progress-text { font-size:13px; font-weight:600; color:#374151; }
+.progress-count { font-size:13px; color:#2563eb; font-weight:700; }
+.progress-bg { height:6px; border-radius:6px; background:#f3f4f6; overflow:hidden; }
+.progress-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,#2563eb,#7c3aed); transition:width 0.3s ease; }
+
+.section-card {
+  background:#fff; border:1px solid #e8eaed;
+  border-radius:14px; overflow:hidden; margin-bottom:10px;
+  transition:border-color 0.2s;
+}
+.section-card.agreed { border-color:#10b981; }
+.section-card.open { border-color:#2563eb; }
+
+.section-header {
+  padding:16px 20px;
+  display:flex; align-items:center; justify-content:space-between;
+  cursor:pointer; transition:background 0.15s; gap:12px;
+}
+.section-header:hover { background:#f9fafb; }
+
+.section-header-left { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+.required-badge {
+  padding:3px 8px; border-radius:4px;
+  font-size:10px; font-weight:700;
+  background:#fef2f2; color:#ef4444; flex-shrink:0;
+}
+.section-title { font-size:14px; font-weight:600; color:#1a1a2e; }
+.section-law { font-size:11px; color:#9ca3af; margin-top:2px; }
+
+.section-status { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.status-badge {
+  padding:4px 10px; border-radius:20px;
+  font-size:11px; font-weight:600;
+  background:#f3f4f6; color:#9ca3af;
+}
+.status-badge.done { background:#d1fae5; color:#059669; }
+.chevron {
+  width:16px; height:16px; stroke:#9ca3af; fill:none;
+  stroke-width:2; stroke-linecap:round; transition:transform 0.2s;
+}
+.section-card.open .chevron { transform:rotate(180deg); }
+
+.section-body {
+  display:none; border-top:1px solid #f3f4f6;
+  animation:fadeDown 0.2s ease;
+}
+.section-body.open { display:block; }
+
+@keyframes fadeDown {
+  from { opacity:0; transform:translateY(-6px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+.section-body-inner { padding:20px; }
+
+.body-label {
+  font-size:11px; font-weight:700; color:#9ca3af;
+  text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;
+}
+
+.law-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+.law-tag {
+  padding:4px 10px; border-radius:4px;
+  font-size:11px; font-weight:500;
+  background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe;
+}
+
+.content-list { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.content-item {
+  display:flex; gap:8px; align-items:flex-start;
+  font-size:13px; color:#374151; line-height:1.65;
+  padding:10px 14px; background:#f9fafb; border-radius:8px;
+}
+.content-dot { width:5px; height:5px; border-radius:50%; background:#2563eb; flex-shrink:0; margin-top:7px; }
+
+.warning-box {
+  background:#fef2f2; border:1px solid #fecaca;
+  border-radius:8px; padding:10px 14px;
+  font-size:12px; color:#dc2626; margin-bottom:16px;
+  display:flex; gap:8px; align-items:flex-start;
+}
+
+.agree-area {
+  border-top:1px solid #f3f4f6; padding-top:16px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.agree-area-text { font-size:13px; color:#374151; font-weight:500; line-height:1.5; }
+.agree-area-text span { color:#2563eb; font-weight:700; }
+
+.agree-btns { display:flex; gap:8px; flex-shrink:0; }
+.disagree-btn {
+  padding:9px 16px; border-radius:8px;
+  border:1px solid #e5e7eb; background:#fff;
+  font-size:13px; font-weight:600; color:#9ca3af;
+  cursor:pointer; font-family:inherit; transition:all 0.15s;
+}
+.disagree-btn:hover { border-color:#ef4444; color:#ef4444; }
+.disagree-btn.active { border-color:#ef4444; background:#fef2f2; color:#ef4444; }
+
+.agree-btn {
+  padding:9px 16px; border-radius:8px;
+  border:1px solid #e5e7eb; background:#fff;
+  font-size:13px; font-weight:600; color:#9ca3af;
+  cursor:pointer; font-family:inherit; transition:all 0.15s;
+}
+.agree-btn:hover { border-color:#2563eb; color:#2563eb; }
+.agree-btn.active { border-color:#2563eb; background:#eff6ff; color:#2563eb; }
+
+.error-msg {
+  background:#fef2f2; border:1px solid #fecaca;
+  border-radius:10px; padding:12px 16px;
+  font-size:13px; color:#dc2626;
+  display:none; align-items:center; gap:8px; margin-bottom:16px;
+}
+.error-msg.show { display:flex; }
+
+.btn-wrap { display:flex; gap:10px; margin-top:20px; }
+.back-btn {
+  flex:1; padding:15px; border:1px solid #e5e7eb;
+  border-radius:12px; background:#fff; color:#6b7280;
+  font-size:15px; font-weight:600; cursor:pointer;
+  font-family:inherit; transition:all 0.2s;
+}
+.back-btn:hover { border-color:#2563eb; color:#2563eb; }
+.submit-btn {
+  flex:2; padding:15px;
+  background:linear-gradient(135deg,#2563eb,#4f46e5);
+  color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:700;
+  cursor:pointer; font-family:inherit; transition:all 0.22s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  box-shadow:0 4px 20px rgba(37,99,235,0.38); position:relative; overflow:hidden;
+}
+.submit-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 60%); opacity:0; transition:opacity 0.2s; }
+.submit-btn:hover:not(:disabled)::before { opacity:1; }
+.submit-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 28px rgba(37,99,235,0.48); }
+.submit-btn:disabled { opacity:0.4; cursor:not-allowed; box-shadow:none; }
+.submit-btn:active:not(:disabled) { transform:scale(0.98) translateY(0); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="logo-wrap">
+    <div class="logo-badge">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 7-7 9-4-2-7-5-7-9a7 7 0 0 1 7-7z"/><path d="M12 8v4M10 10h4"/></svg>
+      </div>
+      <div class="logo-text">Skin<span>AI</span></div>
+    </div>
+    <div class="page-title">개인정보 수집 및 이용 동의</div>
+    <div class="page-sub">각 항목을 클릭해 내용을 확인한 후 동의해주세요<br>모든 항목에 동의해야 회원가입을 계속할 수 있습니다</div>
+  </div>
+
+  <!-- 진행률 -->
+  <div class="progress-wrap">
+    <div class="progress-info">
+      <span class="progress-text">동의 진행률</span>
+      <span class="progress-count" id="progressCount">0 / 10</span>
+    </div>
+    <div class="progress-bg">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- 에러 -->
+  <div class="error-msg" id="errorMsg">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    모든 항목에 동의해야 다음으로 진행할 수 있습니다.
+  </div>
+
+  <div id="sectionList"></div>
+
+  <div class="btn-wrap">
+    <button class="back-btn" onclick="goBack()">← 돌아가기</button>
+    <button class="submit-btn" id="submitBtn" onclick="handleSubmit()" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      동의하고 회원가입 계속하기
+    </button>
+  </div>
+
+</div>
+
+<script src="../src/privacy_consent.js"></script>
+</body>
+</html>

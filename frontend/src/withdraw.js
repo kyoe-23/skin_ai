@@ -53,44 +53,51 @@ async function handleWithdraw() {
   const btn = document.getElementById('withdrawBtn');
   if (!btn.classList.contains('ready')) return;
 
-  // 선택된 탈퇴 이유 수집 (선택 항목)
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  if (!token) {
+    showToast('로그인이 필요합니다', 'error');
+    return;
+  }
+
   const selectedReason = document.querySelector('.reason-item.selected input[type=radio]');
-  const reasonValue  = selectedReason ? selectedReason.value : null;
-  const reasonOther  = reasonValue === 'other'
+  const reasonValue    = selectedReason ? selectedReason.value : null;
+  const reasonOther    = reasonValue === 'other'
     ? document.getElementById('reasonOtherText').value.trim()
     : null;
 
   btn.classList.add('loading');
   btn.disabled = true;
 
-  // ── DB 팀 연동 영역 ──────────────────────────────
-  // TODO: 아래 fetch를 실제 탈퇴 API로 교체
-  //
-  // const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-  // const res = await fetch('/api/auth/withdraw', {
-  //   method: 'DELETE',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': `Bearer ${token}`
-  //   },
-  //   body: JSON.stringify({ reason: reasonValue, reasonDetail: reasonOther })
-  // });
-  // if (!res.ok) {
-  //   showToast('탈퇴 처리 중 오류가 발생했어요. 다시 시도해주세요.', 'error');
-  //   btn.classList.remove('loading');
-  //   btn.disabled = false;
-  //   return;
-  // }
-  // localStorage.removeItem('token');
-  // localStorage.removeItem('user');
-  // sessionStorage.removeItem('token');
-  // sessionStorage.removeItem('user');
-  // ── DB 팀 연동 영역 끝 ──────────────────────────
+  try {
+    const res = await fetch('/api/auth/withdraw', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ reason: reasonValue, reasonDetail: reasonOther })
+    });
 
-  // 임시: 1.2초 딜레이 후 완료 처리 (API 연동 전 프론트 확인용)
-  await new Promise(resolve => setTimeout(resolve, 1200));
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      showToast(data.message || '탈퇴 처리 중 오류가 발생했어요.', 'error');
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      return;
+    }
 
-  showDoneScreen();
+    // 로컬 스토리지 전체 초기화
+    localStorage.clear();
+    sessionStorage.clear();
+
+    showDoneScreen();
+
+  } catch (err) {
+    console.error(err);
+    showToast('서버 연결에 실패했습니다. 다시 시도해주세요.', 'error');
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
 }
 
 

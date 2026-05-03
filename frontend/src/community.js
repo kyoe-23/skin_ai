@@ -5,7 +5,7 @@ const ME = { id:'user_me', author:'김전공', role:'resident', avatar:'김', av
 let posts = [
   { id:1, userId:'user_01', author:'박지현', role:'resident', avatar:'박', avatarColor:'linear-gradient(135deg,#2563eb,#7c3aed)', dept:'피부과', date:'2시간 전', tags:['여드름','감별진단'], title:'20대 여성, 뺨 부위 구진성 병변 — 여드름 vs 주사 감별 어떻게 하셨나요?', content:'외래에서 20대 초반 여성 환자 봤는데 뺨과 코 주위로 홍반성 구진이 산재해 있었습니다. 여드름과 주사를 감별해야 했는데 AI 분류 결과랑 제 소견이 달라서 공유해봅니다.\n\n병변 분포가 뺨 중심부에 집중되어 있고, 코 주변 홍조도 동반되어 있어서 주사를 먼저 고려했는데 AI는 87% 여드름으로 분류했네요.', media:[], likes:24, liked:false, views:142, comments:[] },
   { id:2, userId:'user_02', author:'이준혁', role:'student', avatar:'이', avatarColor:'linear-gradient(135deg,#059669,#0d9488)', dept:'본과 3학년', date:'5시간 전', tags:['습진','질문'], title:'AI가 접촉성 피부염으로 분류했는데 아토피와 어떻게 구분하나요?', content:'실습 중에 찍은 케이스인데 AI 학습 결과 접촉성 피부염 85% 신뢰도로 나왔습니다. 분포 패턴이 아토피랑도 비슷해 보여서 선생님들 의견 구합니다.', media:[], likes:11, liked:false, views:89, comments:[] },
-  { id:3, userId:'user_03', author:'김태영', role:'professor', avatar:'김', avatarColor:'linear-gradient(135deg,#9333ea,#ec4899)', dept:'서울대병원 피부과', date:'어제', tags:['색소 질환','멜라스마'], title:'[교육] 멜라스마 vs 기미 — AI 분류 정확도 한계와 임상적 접근법', content:'이번 학기 전공의 대상으로 진행한 케이스 스터디 결과를 공유합니다. 색소성 질환에서 AI 분류 모델의 정확도와 임상 소견의 차이를 정리했습니다.', media:[], likes:57, liked:false, views:381, comments:[] }
+  { id:3, userId:'user_03', author:'박민서', role:'student', avatar:'박', avatarColor:'linear-gradient(135deg,#059669,#10b981)', dept:'본과 2학년', date:'어제', tags:['색소 질환','멜라스마'], title:'멜라스마 vs 기미 — AI 분류 결과랑 교과서 소견이 다르게 나왔어요', content:'색소성 질환 공부하다가 올립니다. AI 분류 결과와 교과서 기술이 달라서 선배님들 의견 구합니다.', media:[], likes:14, liked:false, views:97, comments:[] }
 ];
 let nextId = 4;
 let currentPostId = null;
@@ -26,9 +26,9 @@ function showToast(msg) {
 }
 function autoResize(el) { el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
 function roleBadge(role) {
-  const map={resident:'전공의',student:'의대생',professor:'교수'};
-  const cls={resident:'badge-resident',student:'badge-student',professor:'badge-professor'};
-  return `<span class="role-badge ${cls[role]}">${map[role]}</span>`;
+  const map={resident:'전공의',student:'의대생'};
+  const cls={resident:'badge-resident',student:'badge-student'};
+  return `<span class="role-badge ${cls[role]||''}">${map[role]||''}</span>`;
 }
 function timeAgo(date) {
   if (typeof date==='string') return date;

@@ -3,7 +3,8 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-const authRoutes = require('./routes/auth');
+const authRoutes    = require('./routes/auth');
+const analyzeRoutes = require('./routes/analyze');
 
 const app = express();
 
@@ -19,7 +20,8 @@ app.use('/src', express.static(path.join(__dirname, '../../frontend/src')));
 app.get('/', (req, res) => res.redirect('/index.html'));
 
 // ── 라우터 연결 ──
-app.use('/api/auth', authRoutes);
+app.use('/api/auth',    authRoutes);
+app.use('/api/analyze', analyzeRoutes);
 
 // ── 서버 실행 ──
 const PORT = process.env.PORT || 3000;

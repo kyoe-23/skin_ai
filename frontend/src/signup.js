@@ -1,3 +1,54 @@
+// ── 개인정보 동의 연동 ──
+function goToPrivacyConsent() {
+  // 현재 입력 내용을 sessionStorage에 임시 저장
+  sessionStorage.setItem('signupDraft', JSON.stringify({
+    name:        document.getElementById('nameInput').value,
+    email:       document.getElementById('emailInput').value,
+    pw:          document.getElementById('pwInput').value,
+    pwConfirm:   document.getElementById('pwConfirmInput').value,
+    affiliation: document.getElementById('affiliationInput').value,
+    year:        document.getElementById('yearSelect').value,
+    bio:         document.getElementById('bioInput').value,
+    role:        selectedRole
+  }));
+  window.location.href = 'privacy_consent.html';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // 개인정보 동의 완료 상태 복원
+  if (sessionStorage.getItem('privacyConsent') === 'true') {
+    document.getElementById('consentPendingBox').style.display = 'none';
+    document.getElementById('consentDoneBox').style.display = 'block';
+  }
+
+  // 이전에 입력했던 폼 데이터 복원
+  const raw = sessionStorage.getItem('signupDraft');
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    if (d.name)        document.getElementById('nameInput').value        = d.name;
+    if (d.email)       document.getElementById('emailInput').value       = d.email;
+    if (d.pw)          document.getElementById('pwInput').value          = d.pw;
+    if (d.pwConfirm)   document.getElementById('pwConfirmInput').value   = d.pwConfirm;
+    if (d.affiliation) document.getElementById('affiliationInput').value = d.affiliation;
+    if (d.year)        document.getElementById('yearSelect').value       = d.year;
+    if (d.bio) {
+      document.getElementById('bioInput').value = d.bio;
+      updateBioCount();
+    }
+    if (d.role) {
+      selectedRole = d.role;
+      document.querySelectorAll('.role-btn').forEach(b => {
+        const onclick = b.getAttribute('onclick') || '';
+        b.classList.toggle('active', onclick.includes(`'${d.role}'`) || onclick.includes(`"${d.role}"`));
+      });
+    }
+    // 비밀번호 입력됐으면 강도 표시 복원
+    if (d.pw)        checkPwStrength();
+    if (d.pwConfirm) validatePwConfirm();
+  } catch (_) {}
+});
+
 // ── 역할 선택 ──
 let selectedRole = 'resident';
 
@@ -133,7 +184,7 @@ async function handleRegister() {
   const affiliation = document.getElementById('affiliationInput').value.trim();
   const year        = document.getElementById('yearSelect').value;
   const bio         = document.getElementById('bioInput').value.trim();
-  const agreeMarketing = window.cState ? cState[3] : false;
+  const consented = sessionStorage.getItem('privacyConsent') === 'true';
 
   // 유효성 검사
   let hasError = false;
@@ -142,7 +193,7 @@ async function handleRegister() {
   if (pw.length < 8) { showFieldError('pwError', '비밀번호는 8자 이상이어야 합니다'); hasError = true; }
   if (pw !== pwConfirm) { showFieldError('pwConfirmError', '비밀번호가 일치하지 않습니다'); hasError = true; }
   if (!affiliation) { showFieldError('affiliationError', '소속 기관을 입력해주세요'); hasError = true; }
-  if (!window.cState || !cState[1] || !cState[2]) { showFieldError('agreeError', '필수 동의 항목을 모두 읽고 동의해주세요'); hasError = true; }
+  if (!consented) { showFieldError('agreeError', '개인정보 동의가 필요합니다'); hasError = true; }
 
   if (hasError) { showBannerError('입력 항목을 다시 확인해주세요.'); return; }
 
@@ -157,8 +208,7 @@ async function handleRegister() {
       body: JSON.stringify({
         name, email, password: pw,
         role: selectedRole,
-        affiliation, year, bio,
-        agreeMarketing
+        affiliation, year, bio
       })
     });
 
@@ -175,7 +225,9 @@ async function handleRegister() {
       return;
     }
 
-    // 성공 → 폼 숨기고 성공 카드 표시
+    // 성공 → 임시 저장 데이터 전체 정리
+    sessionStorage.removeItem('privacyConsent');
+    sessionStorage.removeItem('signupDraft');
     document.getElementById('registerCard').style.display = 'none';
     document.getElementById('successCard').classList.add('show');
     window.scrollTo({ top:0, behavior:'smooth' });

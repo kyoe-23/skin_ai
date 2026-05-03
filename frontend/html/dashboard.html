@@ -9,7 +9,7 @@
 
   body {
     font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
-    background:#f7f8fa; color:#1a1a2e; min-height:100vh;
+    background:#f8fafc; color:#1a1a2e; min-height:100vh;
     animation:pageFadeIn 0.3s ease;
   }
   @keyframes pageFadeIn {
@@ -24,7 +24,7 @@
     padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:56px;
   }
   .nav-logo { display:flex; align-items:center; gap:8px; font-size:17px; font-weight:800; color:#1a1a2e; letter-spacing:-0.4px; cursor:pointer; }
-  .nav-logo-icon { width:30px; height:30px; background:#2563eb; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+  .nav-logo-icon { width:30px; height:30px; background:linear-gradient(135deg,#2563eb,#4f46e5); border-radius:8px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(37,99,235,0.35); }
   .nav-logo-icon svg { width:16px; height:16px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   .nav-logo span { color:#2563eb; }
   .nav-links { display:flex; align-items:center; gap:4px; }
@@ -33,14 +33,25 @@
   .nav-link.active { background:#eff6ff; color:#2563eb; font-weight:600; }
   .nav-right { display:flex; align-items:center; gap:10px; }
   .avatar { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,#2563eb,#7c3aed); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; cursor:pointer; flex-shrink:0; }
+  .logout-btn {
+    font-size:13px; font-weight:500; color:#111827; background:none; border:none;
+    cursor:pointer; font-family:inherit; padding:0; letter-spacing:-0.1px;
+    position:relative;
+  }
+  .logout-btn::after {
+    content:''; position:absolute; left:0; bottom:-1px;
+    width:0; height:1px; background:#111827; transition:width 0.2s ease;
+  }
+  .logout-btn:hover::after { width:100%; }
+  .nav-divider { width:1px; height:14px; background:#e5e7eb; flex-shrink:0; }
 
   /* ── 본문 ── */
   .page { max-width:720px; margin:0 auto; padding:48px 24px 80px; }
 
   /* ── 인사 ── */
   .greeting { margin-bottom:40px; }
-  .greeting-role { display:inline-block; font-size:12px; font-weight:600; color:#2563eb; background:#eff6ff; padding:3px 10px; border-radius:20px; margin-bottom:12px; }
-  .greeting-title { font-size:26px; font-weight:800; color:#111827; letter-spacing:-0.5px; margin-bottom:6px; }
+  .greeting-role { display:inline-block; font-size:12px; font-weight:600; color:#2563eb; background:linear-gradient(135deg,#eff6ff,#f5f3ff); padding:4px 12px; border-radius:20px; margin-bottom:12px; border:1px solid #dbeafe; }
+  .greeting-title { font-size:26px; font-weight:800; color:#0f172a; letter-spacing:-0.6px; margin-bottom:6px; }
   .greeting-sub { font-size:14px; color:#9ca3af; line-height:1.6; }
 
   /* ── 메인 액션 버튼 ── */
@@ -52,12 +63,21 @@
   }
   .action-card.primary {
     background:linear-gradient(135deg,#2563eb 0%,#4f46e5 100%); color:#fff;
+    box-shadow:0 4px 20px rgba(37,99,235,0.35);
+    position:relative; overflow:hidden;
   }
-  .action-card.primary:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(37,99,235,0.3); }
+  .action-card.primary::before {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%);
+    opacity:0; transition:opacity 0.2s;
+  }
+  .action-card.primary:hover::before { opacity:1; }
+  .action-card.primary:hover { transform:translateY(-3px); box-shadow:0 12px 36px rgba(37,99,235,0.42); }
   .action-card.secondary {
-    background:#fff; border:1.5px solid #e5e7eb; color:#1a1a2e;
+    background:#fff; border:1.5px solid #e8edf4; color:#1a1a2e;
+    box-shadow:0 1px 4px rgba(0,0,0,0.04);
   }
-  .action-card.secondary:hover { border-color:#2563eb; transform:translateY(-2px); box-shadow:0 8px 28px rgba(37,99,235,0.08); }
+  .action-card.secondary:hover { border-color:#2563eb; transform:translateY(-3px); box-shadow:0 8px 28px rgba(37,99,235,0.12); }
 
   .action-icon {
     width:44px; height:44px; border-radius:12px;
@@ -85,13 +105,14 @@
   .link-list { display:flex; flex-direction:column; gap:8px; }
   .link-item {
     display:flex; align-items:center; justify-content:space-between;
-    padding:16px 18px; background:#fff; border:1px solid #e8eaed;
-    border-radius:14px; cursor:pointer; transition:all 0.15s;
+    padding:16px 18px; background:#fff; border:1px solid #e8edf4;
+    border-radius:14px; cursor:pointer; transition:all 0.18s;
+    box-shadow:0 1px 3px rgba(0,0,0,0.03);
   }
-  .link-item:hover { border-color:#bfdbfe; background:#fafcff; }
+  .link-item:hover { border-color:#bfdbfe; background:#f8fbff; box-shadow:0 4px 16px rgba(37,99,235,0.08); transform:translateX(2px); }
   .link-item-left { display:flex; align-items:center; gap:14px; }
-  .link-item-icon { width:36px; height:36px; border-radius:10px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; }
-  .link-item-icon svg { width:18px; height:18px; fill:none; stroke:#6b7280; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .link-item-icon { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#eff6ff,#f5f3ff); display:flex; align-items:center; justify-content:center; }
+  .link-item-icon svg { width:18px; height:18px; fill:none; stroke:#2563eb; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   .link-item-label { font-size:14px; font-weight:600; color:#111827; }
   .link-item-desc  { font-size:12px; color:#9ca3af; margin-top:2px; }
   .link-arrow { color:#d1d5db; }
@@ -143,6 +164,8 @@
     <button class="nav-link" onclick="navigateTo('community.html')">커뮤니티</button>
   </div>
   <div class="nav-right">
+    <button class="logout-btn" onclick="handleLogout()">로그아웃</button>
+    <div class="nav-divider"></div>
     <div class="avatar" id="navAvatar" onclick="navigateTo('profile.html')" title="프로필"></div>
   </div>
 </nav>

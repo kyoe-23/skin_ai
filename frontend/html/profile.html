@@ -9,7 +9,7 @@
 
   body {
     font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-    background: #f7f8fa; color: #1a1a2e; min-height: 100vh;
+    background: #f8fafc; color: #1a1a2e; min-height: 100vh;
     animation: pageFadeIn 0.3s ease;
   }
   @keyframes pageFadeIn {
@@ -24,7 +24,7 @@
     padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px;
   }
   .nav-logo { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; color: #1a1a2e; letter-spacing: -0.4px; cursor: pointer; }
-  .nav-logo-icon { width: 30px; height: 30px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .nav-logo-icon { width: 30px; height: 30px; background: linear-gradient(135deg,#2563eb,#4f46e5); border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow:0 3px 10px rgba(37,99,235,0.35); }
   .nav-logo-icon svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .nav-logo span { color: #2563eb; }
   .nav-links { display: flex; align-items: center; gap: 4px; }
@@ -41,15 +41,15 @@
   .page-sub { font-size: 13px; color: #9ca3af; margin-top: 3px; }
 
   /* CARD */
-  .card { background: #fff; border: 1px solid #e8eaed; border-radius: 16px; padding: 24px; margin-bottom: 16px; }
+  .card { background: #fff; border: 1px solid #e8edf4; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow:0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(37,99,235,0.04); }
   .card-title { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
   .card-title-dot { width: 8px; height: 8px; border-radius: 50%; background: #2563eb; flex-shrink: 0; }
 
   /* TAB NAV */
-  .tab-bar { display: flex; gap: 4px; background: #f3f4f6; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
-  .tab-btn { flex: 1; padding: 8px 12px; border-radius: 7px; border: none; background: none; font-size: 13px; font-weight: 500; color: #6b7280; cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap; }
-  .tab-btn:hover { color: #1a1a2e; }
-  .tab-btn.active { background: #fff; color: #1a1a2e; font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .tab-bar { display: flex; gap: 4px; background: #f1f5f9; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+  .tab-btn { flex: 1; padding: 8px 12px; border-radius: 7px; border: none; background: none; font-size: 13px; font-weight: 500; color: #6b7280; cursor: pointer; font-family: inherit; transition: all 0.18s; white-space: nowrap; }
+  .tab-btn:hover { color: #1a1a2e; background: rgba(255,255,255,0.6); }
+  .tab-btn.active { background: #fff; color: #1d4ed8; font-weight: 700; box-shadow: 0 1px 6px rgba(0,0,0,0.1); }
 
   .tab-panel { display: none; }
   .tab-panel.active { display: block; animation: fadeUp 0.25s ease; }
@@ -100,10 +100,19 @@
   .role-option input:checked + .role-label .role-text { color: #2563eb; }
 
   /* SAVE BTN */
-  .save-btn { padding: 12px 24px; background: #2563eb; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
-  .save-btn:hover { background: #1d4ed8; }
-  .save-btn:active { transform: scale(0.98); }
-  .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .save-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 3px 14px rgba(37,99,235,0.35); position: relative; overflow: hidden;
+  }
+  .save-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 60%); opacity:0; transition:opacity 0.2s; }
+  .save-btn:hover::before { opacity:1; }
+  .save-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.45); }
+  .save-btn:active { transform: scale(0.98) translateY(0); }
+  .save-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-row { display: flex; justify-content: flex-end; margin-top: 4px; }
 
   /* PASSWORD */
@@ -163,7 +172,6 @@
   .role-badge-lg { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
   .badge-resident { background: #eff6ff; color: #2563eb; }
   .badge-student { background: #f0fdf4; color: #16a34a; }
-  .badge-professor { background: #fdf4ff; color: #9333ea; }
 
   .info-list { display: flex; flex-direction: column; gap: 10px; }
   .info-row { display: flex; justify-content: space-between; align-items: center; }
@@ -301,6 +309,25 @@
   </div>
 </div>
 
+<!-- 학습 기록 초기화 확인 모달 -->
+<div class="modal-overlay" id="resetRecordsModal">
+  <div class="modal-box">
+    <div class="modal-icon" style="font-size:0;margin-bottom:14px;">
+      <div style="width:56px;height:56px;border-radius:50%;background:#fef2f2;border:2px solid #fecaca;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+      </div>
+    </div>
+    <div class="modal-title">학습 기록을 초기화할까요?</div>
+    <div class="modal-sub">모든 AI 분석 기록과 업로드된 이미지가<br>영구 삭제됩니다. 되돌릴 수 없어요.</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal('resetRecordsModal')">취소</button>
+      <button class="modal-confirm" id="resetRecordsConfirmBtn" onclick="confirmResetRecords()">초기화</button>
+    </div>
+  </div>
+</div>
+
 <!-- 비밀번호 변경 확인 모달 -->
 <div class="modal-overlay" id="pwSuccessModal">
   <div class="modal-box">
@@ -377,13 +404,6 @@
                 <label class="role-label" for="roleStudent">
                   <span class="role-icon">📖</span>
                   <span class="role-text">의대생</span>
-                </label>
-              </div>
-              <div class="role-option">
-                <input type="radio" name="role" id="roleProfessor" value="professor" onchange="updateRolePreview()">
-                <label class="role-label" for="roleProfessor">
-                  <span class="role-icon">🎓</span>
-                  <span class="role-text">교수</span>
                 </label>
               </div>
             </div>
@@ -498,30 +518,11 @@
       <!-- 로그인 세션 -->
       <div class="card">
         <div class="card-title"><div class="card-title-dot"></div> 로그인 세션</div>
-        <div class="session-list">
-          <div class="session-item">
-            <div class="session-icon">
-              <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            </div>
-            <div class="session-info">
-              <div class="session-device">Windows · Chrome</div>
-              <div class="session-time">현재 사용 중</div>
-            </div>
-            <span class="session-current">현재</span>
-          </div>
-          <div class="session-item">
-            <div class="session-icon">
-              <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18" stroke-width="3" stroke-linecap="round"/></svg>
-            </div>
-            <div class="session-info">
-              <div class="session-device">iPhone · Safari</div>
-              <div class="session-time">3시간 전</div>
-            </div>
-            <button style="font-size:11px; color:#dc2626; background:none; border:none; cursor:pointer; font-family:inherit; font-weight:600;" onclick="logoutSession(this)">로그아웃</button>
-          </div>
+        <div class="session-list" id="sessionList">
+          <!-- JS로 렌더링 -->
         </div>
         <div class="btn-row" style="margin-top: 16px;">
-          <button class="save-btn" style="background:#f3f4f6; color:#374151;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'" onclick="logoutAllSessions()">모든 기기에서 로그아웃</button>
+          <button class="save-btn" style="background:#f3f4f6; color:#374151; box-shadow:none;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'" onclick="logoutAllSessions()">모든 기기에서 로그아웃</button>
         </div>
       </div>
     </div>
@@ -574,16 +575,6 @@
             </div>
             <label class="toggle">
               <input type="checkbox" onchange="saveNotifSetting()">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="notif-item">
-            <div class="notif-info">
-              <div class="notif-title">교수 피드백</div>
-              <div class="notif-desc">교수님이 내 케이스에 피드백을 남기면 알립니다</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" checked onchange="saveNotifSetting()">
               <span class="toggle-slider"></span>
             </label>
           </div>
