@@ -1,17 +1,21 @@
 // 분석 가능 질환 목록
 const VALID_DISEASES = [
-  { key: 'psoriasis',         nameKo: '건선',          nameEn: 'Psoriasis' },
-  { key: 'atopic_dermatitis', nameKo: '아토피 피부염',  nameEn: 'Atopic Dermatitis' },
-  { key: 'rosacea',           nameKo: '주사',           nameEn: 'Rosacea' },
-  { key: 'seborrheic',        nameKo: '지루성 피부염',  nameEn: 'Seborrheic Dermatitis' },
-  { key: 'acne',              nameKo: '여드름',         nameEn: 'Acne Vulgaris' },
-  { key: 'normal',            nameKo: '정상',           nameEn: 'Normal' },
+  { key: 'psoriasis',          nameKo: '건선',         nameEn: 'Psoriasis' },
+  { key: 'atopic_dermatitis',  nameKo: '아토피피부염',  nameEn: 'Atopic Dermatitis' },
+  { key: 'rosacea',            nameKo: '주사',          nameEn: 'Rosacea' },
+  { key: 'seborrheic',         nameKo: '지루피부염',    nameEn: 'Seborrheic Dermatitis' },
+  { key: 'acne',               nameKo: '여드름',        nameEn: 'Acne Vulgaris' },
+  { key: 'normal',             nameKo: '정상',          nameEn: 'Normal' },
 ];
 
+function diseaseByKoName(nameKo) {
+  return VALID_DISEASES.find(d => d.nameKo === nameKo) ?? { key: nameKo, nameKo, nameEn: nameKo };
+}
+
 // DOM 참조
-const fileInput         = document.getElementById('fileInput');
-const changeInput       = document.getElementById('changeInput');
-const uploadZone        = document.getElementById('uploadZone');
+const fileInput        = document.getElementById('fileInput');
+const changeInput      = document.getElementById('changeInput');
+const uploadZone       = document.getElementById('uploadZone');
 const uploadPlaceholder = document.getElementById('uploadPlaceholder');
 const previewWrap       = document.getElementById('previewWrap');
 const previewImg        = document.getElementById('previewImg');
@@ -117,22 +121,43 @@ async function uploadImage(file) {
 
 // ──────────────────────────────────────────
 //  AI 분석 API 호출
-//  API 응답 형식:
-//  성공: { valid: true, primary: { key, nameKo, nameEn, confidence },
-//          others: [...], findings: [...] }
-//  실패: { valid: false, reason: '...' }
 // ──────────────────────────────────────────
 async function callAnalyzeAPI(imageUrl) {
-  // TODO: 실제 AI API 엔드포인트로 교체
-  // const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-  // const res = await fetch('/api/analyze/run', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-  //   body: JSON.stringify({ imageUrl })
-  // });
-  // return await res.json();
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+  const res = await fetch('/api/analyze/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ imageUrl }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-  throw new Error('API_NOT_CONNECTED');
+  const raw = await res.json();
+  if (!raw.success) return { valid: false, reason: raw.error || '분석에 실패했습니다.' };
+
+  const pred = raw.prediction;
+  const primaryDisease = diseaseByKoName(pred.class_name);
+
+  const others = (pred.top3 || [])
+    .filter(t => t.class !== pred.class_name)
+    .map(t => {
+      const d = diseaseByKoName(t.class);
+      return { key: d.key, nameKo: d.nameKo, nameEn: d.nameEn, confidence: t.prob };
+    });
+
+  return {
+    valid:        !pred.uncertain,
+    reason:       pred.message ?? null,
+    primary: {
+      key:        primaryDisease.key,
+      nameKo:     primaryDisease.nameKo,
+      nameEn:     primaryDisease.nameEn,
+      confidence: pred.confidence,
+    },
+    others,
+    findings:     [],
+    gradcam:      raw.gradcam ?? null,
+    clinical_ref: raw.clinical_ref ?? null,
+  };
 }
 
 // ──────────────────────────────────────────
@@ -269,12 +294,40 @@ function renderResult(data) {
 }
 
 // ──────────────────────────────────────────
-//  기록 저장 (my_analyze.html 연동 예정)
+//  기록 저장
 // ──────────────────────────────────────────
-function saveRecord() {
-  if (!lastApiResult) return;
-  // TODO: API로 기록 저장 연동
-  alert('기록 저장 기능은 AI API 연결 후 활성화됩니다.');
+async function saveRecord() {
+  if (!lastApiResult?.imageUrl) return;
+
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+  if (!token) { alert('로그인이 필요합니다.'); return; }
+
+  const saveBtn = document.querySelector('.action-btn.primary[onclick="saveRecord()"]');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
+
+  try {
+    const primary = lastApiResult.primary;
+    const res = await fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        image_url:         lastApiResult.imageUrl,
+        primary_diagnosis: primary.nameKo,
+        confidence:        primary.confidence,
+        differential:      lastApiResult.others     || [],
+        gradcam_b64:       lastApiResult.gradcam    || null,
+        clinical_ref:      lastApiResult.clinical_ref ?? null,
+      }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    alert('기록이 저장됐습니다.');
+  } catch (err) {
+    console.error('기록 저장 실패:', err);
+    alert('저장 중 오류가 발생했습니다.');
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '기록 저장'; }
+  }
 }
 
 // 초기화

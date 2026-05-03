@@ -175,6 +175,19 @@
         <div class="conf-label">AI 신뢰도</div>
       </div>
     </div>
+    <div id="gradcamRow" style="display:none;margin-top:14px;">
+      <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Grad-CAM — AI 주목 영역</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:11px;color:#9ca3af;margin-bottom:4px;text-align:center;">원본</div>
+          <div class="analyzed-img" id="gradcamOriginal"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#9ca3af;margin-bottom:4px;text-align:center;">히트맵</div>
+          <div class="analyzed-img" id="gradcamHeatmap"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 내 답변 vs AI 비교 -->

@@ -1,10 +1,14 @@
-const express = require('express');
-const multer  = require('multer');
-const sharp   = require('sharp');
-const crypto  = require('crypto');
+const express  = require('express');
+const multer   = require('multer');
+const sharp    = require('sharp');
+const crypto   = require('crypto');
+const axios    = require('axios');
+const FormData = require('form-data');
 const { authenticateToken } = require('../middleware/auth');
 const supabase = require('../config/supabase');
 const { applyMaskingPipeline } = require('../utils/masking');
+
+const FLASK_URL = `http://localhost:${process.env.FLASK_PORT || 5001}`;
 
 const router = express.Router();
 
@@ -69,18 +73,6 @@ router.post('/upload', authenticateToken, upload.single('image'), async (req, re
 
     const imageUrl = urlData.publicUrl;
 
-    // 5단계: DB 기록 저장
-    const { error: dbError } = await supabase
-      .from('analysis_records')
-      .insert({
-        user_id:   userId,
-        image_url: imageUrl,
-        is_masked: true,
-        status:    'pending'
-      });
-
-    if (dbError) throw dbError;
-
     res.json({ imageUrl });
 
   } catch (err) {
@@ -90,6 +82,27 @@ router.post('/upload', authenticateToken, upload.single('image'), async (req, re
       return res.status(400).json({ message: err.message });
     }
     res.status(500).json({ message: err.message || '처리 중 오류가 발생했습니다.' });
+  }
+});
+
+// POST /api/analyze/run — Flask AI 서버 프록시
+router.post('/run', authenticateToken, async (req, res) => {
+  const { imageUrl } = req.body;
+  if (!imageUrl) return res.status(400).json({ success: false, error: 'imageUrl이 필요합니다.' });
+
+  try {
+    const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 10000 });
+    const form = new FormData();
+    form.append('image', Buffer.from(imgRes.data), { filename: 'image.png', contentType: 'image/png' });
+
+    const flaskRes = await axios.post(`${FLASK_URL}/predict`, form, {
+      headers: form.getHeaders(),
+      timeout: 30000,
+    });
+    res.json(flaskRes.data);
+  } catch (err) {
+    console.error('[analyze/run]', err.message);
+    res.status(502).json({ success: false, error: 'AI 서버와 통신에 실패했습니다.' });
   }
 });
 

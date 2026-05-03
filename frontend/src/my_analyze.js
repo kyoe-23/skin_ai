@@ -1,13 +1,67 @@
 // ── 상태 ──
+let allRecords = [];
 let currentDisease = 'all';
 let currentPage = 1;
 const itemsPerPage = 5;
 
-const DISEASE_LABEL = {
-  acne: '여드름', rosacea: '주사', seborrheic: '지루성 피부염',
-  eczema: '습진', psoriasis: '건선', melasma: '기미'
+const DISEASE_MAP = {
+  psoriasis:         { ko: '건선',        en: 'Psoriasis' },
+  atopic_dermatitis: { ko: '아토피피부염', en: 'Atopic Dermatitis' },
+  acne:              { ko: '여드름',       en: 'Acne Vulgaris' },
+  rosacea:           { ko: '주사',         en: 'Rosacea' },
+  seborrheic:        { ko: '지루피부염',   en: 'Seborrheic Dermatitis' },
+  normal:            { ko: '정상',         en: 'Normal' },
 };
-function getDiseaseLabel(d) { return DISEASE_LABEL[d] || d; }
+function getDiseaseLabel(d) { return DISEASE_MAP[d]?.ko || d; }
+
+function toDisplayRecord(r) {
+  const conf = r.confidence != null ? Math.round(r.confidence * 100) : 0;
+  const info = DISEASE_MAP[r.primary_diagnosis] || { ko: r.primary_diagnosis || '미분류', en: r.primary_diagnosis || '' };
+  return {
+    id:        r.record_id,
+    diag:      info.en,
+    diagKo:    info.ko,
+    disease:   r.primary_diagnosis || 'unknown',
+    date:      r.created_at ? r.created_at.slice(0, 10) : '-',
+    conf,
+    correct:   r.is_correct === true,
+    answered:  r.user_answer != null,
+    myAnswer:  r.user_answer || '',
+    findings:  [],
+    emoji:     '🔬',
+    imageUrl:  r.image_url || null,
+    status:    r.status,
+  };
+}
+
+async function loadRecords() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    document.getElementById('recordList').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">로그인이 필요합니다</div><div class="empty-text">로그인 후 내 분석 기록을 확인할 수 있습니다</div></div>`;
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/records', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { records } = await res.json();
+    allRecords = records.map(toDisplayRecord);
+  } catch (err) {
+    console.error('기록 로드 실패:', err);
+    document.getElementById('recordList').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">기록을 불러오지 못했습니다</div></div>`;
+    return;
+  }
+
+  updateStats();
+  applyFilters();
+  renderDiseaseChart();
+  renderMonthlyChart();
+  renderStreak();
+}
 
 // ── 필터 ──
 function filterDisease(el, val) {
@@ -261,8 +315,4 @@ function renderStreak() {
 }
 
 // ── 초기화 ──
-updateStats();
-applyFilters();
-renderDiseaseChart();
-renderMonthlyChart();
-renderStreak();
+loadRecords();
