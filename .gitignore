@@ -50,7 +50,7 @@ ai/logs/
 data/raw/
 data/dataset_14/
 data/dataset_15/
-data/dermnet
+data/dermnet/
 
 # 모델 체크포인트 (용량 큼)
 *.pth
