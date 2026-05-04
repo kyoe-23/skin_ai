@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 # ── 상수 ─────────────────────────────────────────────────────────
 CURVE_DPI = 150
+DICE_EPSILON = 1e-8    # Dice 분모 0 방지용 안정화 항
+LESION_CLASS_IDX = 1   # 세그멘테이션 클래스: 0=배경, 1=병변
 
 
 # ── 메트릭 계산 ──────────────────────────────────────────────────
@@ -70,11 +72,10 @@ def _compute_dice(pred, target):
     Returns:
         float: Dice 계수
     """
-    epsilon = 1e-8
-    pred_1 = (pred == 1).float()
-    target_1 = (target == 1).float()
+    pred_1 = (pred == LESION_CLASS_IDX).float()
+    target_1 = (target == LESION_CLASS_IDX).float()
     intersection = (pred_1 * target_1).sum()
-    return (2 * intersection / (pred_1.sum() + target_1.sum() + epsilon)).item()
+    return (2 * intersection / (pred_1.sum() + target_1.sum() + DICE_EPSILON)).item()
 
 
 # ── 학습/검증 루프 ───────────────────────────────────────────────
@@ -154,7 +155,7 @@ def validate_seg(model, loader, criterion, device, config):
 
         total_loss += loss.item()
         # IoU NaN 처리: 해당 클래스 미존재 시 0으로 대체
-        lesion_iou = ious[1] if not torch.isnan(torch.tensor(ious[1])) else 0
+        lesion_iou = ious[LESION_CLASS_IDX] if not torch.isnan(torch.tensor(ious[LESION_CLASS_IDX])) else 0
         total_iou_lesion += lesion_iou
         total_dice += dice
         total_pixel_acc += pixel_acc

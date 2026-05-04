@@ -43,6 +43,7 @@ PLOT_DPI = 150
 ROC_COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD"]
 DEFAULT_OUTPUT_DIR = os.getenv("EVAL_OUTPUT_DIR", "ai/testing/eval_results")
 DEFAULT_SPLIT = "val"
+PLATFORM_DARWIN = "Darwin"
 
 
 # ── 예측 수집 ────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ def _plot_confusion_matrix(cm, class_names, save_path):
         save_path: 저장 경로
     """
     import platform
-    if platform.system() == "Darwin":
+    if platform.system() == PLATFORM_DARWIN:
         plt.rcParams["font.family"] = "AppleGothic"
     plt.rcParams["axes.unicode_minus"] = False
 

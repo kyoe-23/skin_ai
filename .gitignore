@@ -51,6 +51,8 @@ data/raw/
 data/dataset_14/
 data/dataset_15/
 data/dermnet/
+data/HAM10000/
+data/ISIC 2019/
 
 # 모델 체크포인트 (용량 큼)
 *.pth

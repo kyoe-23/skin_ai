@@ -274,10 +274,12 @@ def main():
         ext_train = ExternalFacialDataset(
             str(ext_data_dir / "train.csv"),
             transform=train_transform,
+            root_dir=args.root_dir,
         )
         ext_val = ExternalFacialDataset(
             str(ext_data_dir / "val.csv"),
             transform=val_transform,
+            root_dir=args.root_dir,
         )
         external_train_size = len(ext_train)
         train_dataset = ConcatDataset([train_dataset, ext_train])

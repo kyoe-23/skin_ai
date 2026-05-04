@@ -17,6 +17,7 @@ import pandas as pd
 
 CLASS_NAMES = ["건선", "아토피피부염", "여드름", "주사", "지루피부염", "정상"]
 COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD"]
+VALID_SPLITS = ["train", "val", "test"]
 
 
 def setup_korean_font():
@@ -59,7 +60,7 @@ def plot_class_distribution(df: pd.DataFrame, output_dir: Path):
     """클래스별 이미지 수 막대 그래프 (split 구분)."""
     fig, ax = plt.subplots(figsize=(12, 6))
 
-    splits = ["train", "val", "test"]
+    splits = VALID_SPLITS
     x = np.arange(len(CLASS_NAMES))
     width = 0.25
 

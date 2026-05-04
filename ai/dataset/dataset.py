@@ -42,6 +42,10 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 # fallback 시 더미 이미지 기본 크기 (config의 crop_size가 우선)
 DEFAULT_CROP_SIZE = 224
+NUM_CHANNELS = 3               # RGB
+_FALLBACK_SEARCH_RANGE = 10    # 이미지 로드 실패 시 인접 샘플 탐색 범위
+MASK_BINARIZE_THRESHOLD = 127  # 세그멘테이션 마스크 이진화 기준값
+ATOPY_TARGET_CLASS = "아토피피부염"  # AihubSegDataset 필터 대상 클래스
 
 
 # ── 헬퍼 ─────────────────────────────────────────────────────────
@@ -265,7 +269,7 @@ class AihubFacialDataset(Dataset):
         Returns:
             tuple: (image_tensor, label) — 유효 샘플 또는 더미
         """
-        for offset in range(1, min(10, len(self.df))):
+        for offset in range(1, min(_FALLBACK_SEARCH_RANGE, len(self.df))):
             next_idx = (idx + offset) % len(self.df)
             row = self.df.iloc[next_idx]
             image = _load_image_from_zip(row["zip_path"], row["filename"])
@@ -276,7 +280,7 @@ class AihubFacialDataset(Dataset):
             return image, int(row["class_idx"])
 
         # 모든 fallback 실패 시 더미 (배치 크기 유지용)
-        return torch.zeros(3, self._crop_size, self._crop_size), 0
+        return torch.zeros(NUM_CHANNELS, self._crop_size, self._crop_size), 0
 
 
 class AihubSegDataset(Dataset):
@@ -298,7 +302,7 @@ class AihubSegDataset(Dataset):
         crop_size: int = DEFAULT_CROP_SIZE,
     ):
         df = pd.read_csv(csv_path)
-        self.df = df[df["class_name"] == "아토피피부염"].reset_index(drop=True)
+        self.df = df[df["class_name"] == ATOPY_TARGET_CLASS].reset_index(drop=True)
 
         if root_dir is not None:
             self.df["zip_path"] = self.df["zip_path"].apply(
@@ -328,7 +332,7 @@ class AihubSegDataset(Dataset):
 
             if mask_path.exists():
                 mask = np.array(Image.open(mask_path).convert("L"))
-                mask = (mask > 127).astype(np.uint8)
+                mask = (mask > MASK_BINARIZE_THRESHOLD).astype(np.uint8)
             else:
                 mask = np.zeros(image.shape[:2], dtype=np.uint8)
 
@@ -345,7 +349,7 @@ class AihubSegDataset(Dataset):
         except (OSError, UnidentifiedImageError) as e:
             logger.warning(f"세그멘테이션 데이터 로드 실패 [{idx}]: {e}")
             return (
-                torch.zeros(3, self._crop_size, self._crop_size),
+                torch.zeros(NUM_CHANNELS, self._crop_size, self._crop_size),
                 torch.zeros(self._crop_size, self._crop_size, dtype=torch.long),
             )
 
@@ -356,10 +360,17 @@ class ExternalFacialDataset(Dataset):
     external_preprocessor.py가 생성한 CSV를 읽어 image_path에서
     직접 이미지를 로드한다. ZIP 없이 파일 경로 직접 접근 방식.
 
+    CSV의 image_path는 프로젝트 루트 기준 상대경로로 저장되어 있으며,
+    root_dir를 지정하면 절대경로로 복원한다.
+    Colab 등 다른 환경에서는 root_dir에 Drive 마운트 경로를 전달한다.
+
     Args:
         csv_path: external_preprocessor가 생성한 CSV 경로
         transform: torchvision transform (None이면 val 기본 transform)
         crop_size: 로드 실패 시 더미 텐서 크기
+        root_dir: image_path 앞에 붙일 프로젝트 루트 경로.
+                  None이면 CSV 저장 경로를 그대로 사용(로컬 실행 시).
+                  Colab에서는 "/content/drive/MyDrive/skin_ai" 등으로 지정.
     """
 
     def __init__(
@@ -367,8 +378,15 @@ class ExternalFacialDataset(Dataset):
         csv_path: str,
         transform=None,
         crop_size: int = DEFAULT_CROP_SIZE,
+        root_dir: Optional[str] = None,
     ):
         df = pd.read_csv(csv_path)
+
+        # 환경별 경로 복원 — root_dir를 prefix로 붙여 절대경로 구성
+        if root_dir is not None:
+            df["image_path"] = df["image_path"].apply(
+                lambda p: str(Path(root_dir) / p)
+            )
 
         if "class_idx" not in df.columns:
             df["class_idx"] = df["class_name"].map(CLASS_MAP)
