@@ -248,6 +248,30 @@
     .layout { grid-template-columns: 1fr; padding: 16px 12px 80px; gap: 0; }
     .page-title { font-size: 17px; }
     .card { padding: 16px; border-radius: 12px; }
+
+    /* 탭 버튼: 작은 화면에서 글자 크기 축소 */
+    .tab-btn { font-size: 11px; padding: 7px 6px; }
+
+    /* 폼 그리드: 1컬럼 */
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: auto; }
+
+    /* 역할 선택: 2컬럼 */
+    .role-select-group { grid-template-columns: repeat(2, 1fr); }
+
+    /* 인증 코드 행: 세로 스택 */
+    .input-action-row { flex-direction: column; align-items: stretch; gap: 8px; }
+    .send-code-btn { align-self: flex-start; }
+
+    /* 아바타 섹션: 좁은 화면 대응 */
+    .avatar-section { gap: 14px; padding: 14px; }
+    .avatar-btns { flex-wrap: wrap; }
+
+    /* 사이드바 info-row 이메일 등 긴 텍스트 */
+    .info-val { word-break: break-all; text-align: right; max-width: 55%; }
+
+    /* notif-item 우측 버튼 overflow 방지 */
+    .notif-item { flex-wrap: wrap; gap: 8px; }
   }
 </style>
 </head>
