@@ -46,10 +46,11 @@ ai/checkpoints/
 ai/preprocessing/processed_aihub/
 ai/logs/
 
-# 데이터셋 원본 (용량 큼 — PM만 보유)
+# 데이터셋 원본
 data/raw/
 data/dataset_14/
 data/dataset_15/
+data/dermnet
 
 # 모델 체크포인트 (용량 큼)
 *.pth

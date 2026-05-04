@@ -26,13 +26,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset, WeightedRandomSampler
 
 # ── 로컬 ─────────────────────────────────────────────────────────
 from .config import ClassifyConfig
 from .model import build_classifier, log_model_info
 from ..utils import get_device, resolve_num_workers, topk_accuracy
-from ...dataset.dataset import AihubFacialDataset, get_transforms, worker_init_fn
+from ...dataset.dataset import AihubFacialDataset, ExternalFacialDataset, get_transforms, worker_init_fn
 
 logger = logging.getLogger(__name__)
 
@@ -265,14 +265,51 @@ def main():
 
     num_workers = resolve_num_workers(device, config.num_workers)
 
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=config.batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=True,
-        worker_init_fn=worker_init_fn,
-    )
+    aihub_train_size = len(train_dataset)
+    external_train_size = 0
+
+    if config.extra_data_dir:
+        ext_data_dir = Path(config.extra_data_dir)
+        ext_train = ExternalFacialDataset(
+            str(ext_data_dir / "train.csv"),
+            transform=train_transform,
+        )
+        ext_val = ExternalFacialDataset(
+            str(ext_data_dir / "val.csv"),
+            transform=val_transform,
+        )
+        external_train_size = len(ext_train)
+        train_dataset = ConcatDataset([train_dataset, ext_train])
+        val_dataset = ConcatDataset([val_dataset, ext_val])
+
+        # AI Hub 합성 샘플은 weight=1.0, 외부 실제 이미지는 config.external_weight로 업샘플
+        sample_weights = (
+            [1.0] * aihub_train_size
+            + [config.external_weight] * external_train_size
+        )
+        sampler = WeightedRandomSampler(
+            sample_weights,
+            num_samples=len(train_dataset),
+            replacement=True,
+        )
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=config.batch_size,
+            sampler=sampler,
+            num_workers=num_workers,
+            pin_memory=True,
+            worker_init_fn=worker_init_fn,
+        )
+    else:
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=config.batch_size,
+            shuffle=True,
+            num_workers=num_workers,
+            pin_memory=True,
+            worker_init_fn=worker_init_fn,
+        )
+
     val_loader = DataLoader(
         val_dataset,
         batch_size=config.batch_size,
@@ -282,7 +319,7 @@ def main():
         worker_init_fn=worker_init_fn,
     )
 
-    print(f"\n  Train: {len(train_dataset)}건")
+    print(f"\n  Train: {len(train_dataset)}건 (AI Hub {aihub_train_size} + 외부 {external_train_size})")
     print(f"  Val  : {len(val_dataset)}건")
 
     # ── 모델 생성 ────────────────────────────────────────────────
@@ -412,6 +449,8 @@ def main():
         "best_val_top1": round(best_val_top1, 4),
         "target_achieved": best_val_top1 >= config.target_top1_acc,
         "guideline_target": config.target_top1_acc,
+        "aihub_train_samples": aihub_train_size,
+        "external_train_samples": external_train_size,
         "device": str(device),
         "started_at": datetime.now().isoformat(),
         "history": history,

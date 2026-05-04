@@ -85,6 +85,11 @@ class ClassifyConfig:
     early_stopping_patience: int = field(default_factory=lambda: _env_int("EARLY_STOPPING_PATIENCE", sys.maxsize))
     save_every_n_epochs: int = field(default_factory=lambda: _env_int("SAVE_EVERY_N_EPOCHS", 5))
 
+    # ── 외부 데이터 혼합 학습 (비어 있으면 비활성 — 기존 동작 유지) ──
+    extra_data_dir: str = field(default_factory=lambda: _env_str("EXTRA_DATA_DIR", ""))
+    # 외부 이미지 샘플링 가중치: 합성 데이터=1.0 기준으로 실제 이미지 비율 조정
+    external_weight: float = field(default_factory=lambda: _env_float("EXTERNAL_WEIGHT", 1.5))
+
     # ── 로깅 ────────────────────────────────────────────────────
     log_dir: str = field(default_factory=lambda: _env_str("LOG_DIR", "ai/logs/aihub"))
     experiment_name: str = field(default_factory=lambda: _env_str("EXPERIMENT_NAME", "densenet121_baseline"))

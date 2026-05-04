@@ -93,17 +93,20 @@ def get_transforms(split: str, config=None, task: str = "classify"):
 
     if task == "classify":
         if split == "train":
+            # 합성→실제 도메인 갭 대응: ColorJitter·Rotation 강화, Perspective·Sharpness 추가
             return transforms.Compose([
                 transforms.Resize(image_size),
                 transforms.RandomCrop(crop_size),
                 transforms.RandomHorizontalFlip(0.5),
-                transforms.ColorJitter(0.3, 0.3, 0.3, 0.1),
+                transforms.ColorJitter(0.5, 0.5, 0.5, 0.2),
                 transforms.RandomGrayscale(p=0.1),
-                transforms.RandomRotation(15),
-                transforms.RandomApply([transforms.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0))], p=0.3),
+                transforms.RandomRotation(20),
+                transforms.RandomApply([transforms.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0))], p=0.5),
+                transforms.RandomPerspective(distortion_scale=0.2, p=0.3),
+                transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.3),
                 transforms.ToTensor(),
                 transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-                transforms.RandomErasing(p=0.2, scale=(0.02, 0.15)),
+                transforms.RandomErasing(p=0.3, scale=(0.02, 0.25)),
             ])
         return transforms.Compose([
             transforms.Resize(image_size),
@@ -345,3 +348,59 @@ class AihubSegDataset(Dataset):
                 torch.zeros(3, self._crop_size, self._crop_size),
                 torch.zeros(self._crop_size, self._crop_size, dtype=torch.long),
             )
+
+
+class ExternalFacialDataset(Dataset):
+    """파일 시스템 기반 외부 임상 이미지 Dataset.
+
+    external_preprocessor.py가 생성한 CSV를 읽어 image_path에서
+    직접 이미지를 로드한다. ZIP 없이 파일 경로 직접 접근 방식.
+
+    Args:
+        csv_path: external_preprocessor가 생성한 CSV 경로
+        transform: torchvision transform (None이면 val 기본 transform)
+        crop_size: 로드 실패 시 더미 텐서 크기
+    """
+
+    def __init__(
+        self,
+        csv_path: str,
+        transform=None,
+        crop_size: int = DEFAULT_CROP_SIZE,
+    ):
+        df = pd.read_csv(csv_path)
+
+        if "class_idx" not in df.columns:
+            df["class_idx"] = df["class_name"].map(CLASS_MAP)
+
+        # 매핑 실패(NaN) 행 제거
+        before = len(df)
+        df = df.dropna(subset=["class_idx"]).reset_index(drop=True)
+        df["class_idx"] = df["class_idx"].astype(int)
+        if len(df) < before:
+            logger.warning(f"[WARNING] class_idx 매핑 실패로 {before - len(df)}건 제외")
+
+        self.df = df
+        self._crop_size = crop_size
+        split = Path(csv_path).stem   # 파일명으로 split 추론 (train/val/test)
+        self.transform = transform or get_transforms(split)
+
+        logger.info(f"ExternalFacialDataset 로드: {csv_path} ({len(self.df)}건)")
+
+    def __len__(self) -> int:
+        return len(self.df)
+
+    def __getitem__(self, idx: int):
+        row = self.df.iloc[idx]
+        label = int(row["class_idx"])
+
+        try:
+            image = Image.open(row["image_path"]).convert("RGB")
+        except (OSError, UnidentifiedImageError) as e:
+            logger.warning(f"[WARNING] 외부 이미지 로드 실패: {Path(row['image_path']).name} — {e}")
+            return torch.zeros(3, self._crop_size, self._crop_size), label
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label

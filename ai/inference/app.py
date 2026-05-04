@@ -450,6 +450,22 @@ def predict():
         return jsonify({"success": False, "error": "분석 중 오류가 발생했습니다."}), 500
 
 
+@app.route("/report", methods=["POST"])
+def report():
+    """분류 결과 dict를 받아 LLM 리포트 생성. 이미지 미전송."""
+    from llm_service import generate_report
+
+    data = request.get_json(silent=True) or {}
+    prediction = data.get("prediction")
+    if not prediction or "class_name" not in prediction:
+        return jsonify({"success": False, "error": "prediction 필드가 필요합니다."}), 400
+
+    report_obj = generate_report(prediction, data.get("clinical_ref"))
+    if report_obj is None:
+        return jsonify({"success": True, "report": None, "enabled": False})
+    return jsonify({"success": True, "report": report_obj, "enabled": True})
+
+
 # ── 에러 핸들러 ──────────────────────────────────────────────────
 
 @app.errorhandler(413)
