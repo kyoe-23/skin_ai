@@ -1,6 +1,7 @@
 # 파트 5 — 도메인 갭 해소: 80% 달성 가능 플랜
 
 > 작성일: 2026-05-04  
+> 최종 수정: 2026-05-04 (DermNet 실제 폴더 구조 검증 후 매핑 테이블 전면 수정)  
 > 대상 모델: DS14 (안면부 염증성 6종) + DS15 (피부종양 15종)  
 > 공통 문제: 합성 데이터 도메인 갭 — 실제 임상 이미지 테스트에서 정확도 급락  
 > 목표: 외부 임상 이미지 Top-1 **≥ 80%** (실사용 최소 기준)  
@@ -31,23 +32,45 @@
 
 | 항목 | 내용 |
 |------|------|
-| 총량 | 19,500장 (23종) |
-| DS14 커버 | 건선, 아토피, 여드름, 주사, 지루피부염 — 5/6종 (정상 클래스 없음) |
+| 총량 | train 15,557장 + test 4,002장 = 19,559장 (23종) |
+| DS14 커버 | 건선, 아토피피부염, 여드름 — **실질 3종** (정상·지루피부염 없음, 주사 분리 불가) |
 | 이미지 유형 | 실제 임상 사진 |
 | 라이선스 | CC BY-NC-ND 4.0 (학술 허용) |
 | 다운로드 | `kaggle datasets download shubhamgoel27/dermnet` |
 | 워터마크 | 일부 있음 → 없는 버전: `alisahad/dermnet-augmented-datasetno-watermark` |
 
-**6종 매핑 테이블** (23개 폴더 → 6종):
+**실제 검증된 매핑 테이블** (23개 폴더 직접 확인, 2026-05-04):
 
-| AI Hub 클래스 | DermNet 폴더명 |
-|--------------|--------------|
-| 건선 | `Psoriasis pictures Lichen planus and related diseases/` |
-| 아토피피부염 | `Atopic dermatitis photos/` |
-| 여드름 | `Acne and rosacea Photos/` — 내부 분리 필요 |
-| 주사 | `Acne and rosacea Photos/` — 내부 분리 필요 |
-| 지루피부염 | `Seborrheic dermatitis Photos/` |
-| 정상 | **없음** → 보완 필요 (아래 §4 참고) |
+| AI Hub 클래스 | DermNet 폴더명 | train | test | 레이블 품질 |
+|--------------|--------------|------:|-----:|-----------|
+| 건선 | `Psoriasis pictures Lichen Planus and related diseases` | 1,405 | 352 | ⚠️ Lichen Planus(편평태선) 혼재 |
+| 아토피피부염 | `Atopic Dermatitis Photos` | 489 | 123 | ✅ |
+| 아토피피부염 | `Eczema Photos` *(기획안 누락)* | 1,235 | 309 | ⚠️ 습진 상위 개념 — 접촉성 피부염 등 혼재 |
+| 여드름+주사 혼재 | `Acne and Rosacea Photos` | 840 | 312 | ❌ 파일 단위 레이블 없어 분리 불가 |
+| **지루피부염** | **폴더 없음** | — | — | ❌ 기획안 오류 |
+| **주사** | **독립 폴더 없음** | — | — | ❌ 위 여드름 폴더에 혼재, 분리 불가 |
+| **정상** | **폴더 없음** | — | — | ❌ (기획안과 동일) |
+
+> **기획안 수정 사항 요약**
+>
+> | 항목 | 기획안 | 실제 |
+> |------|--------|------|
+> | DS14 커버 클래스 수 | 5종 | **3종** (건선·아토피·여드름) |
+> | 지루피부염 폴더 | `Seborrheic dermatitis Photos/` | **존재하지 않음** — `Seborrheic Keratoses and other Benign Tumors`(지루각화증, 다른 질환)만 있음 |
+> | 주사 독립 폴더 | `Acne and rosacea Photos/` 내부 분리 가능 | **파일 단위 레이블 미제공으로 분리 불가** |
+> | `Eczema Photos` 처리 | 언급 없음 | 아토피로 병합 (습진 노이즈 포함) |
+> | train 이미지 수 | 3,373장 | **3,969장** (Eczema 병합 포함) |
+> | 폴더명 대소문자 | `Lichen planus`, `dermatitis photos` | `Lichen Planus`, `Dermatitis Photos` (대문자) |
+
+**DermNet 내 클래스 불균형 (train 기준):**
+
+| 매핑 클래스 | train | test |
+|------------|------:|-----:|
+| 아토피피부염 (Atopic + Eczema 합산) | 1,724 | 432 |
+| 건선 | 1,405 | 352 |
+| 여드름 (주사 혼재) | 840 | 312 |
+
+여드름이 아토피 대비 약 2배 적다. WeightedRandomSampler의 AI Hub/DermNet 소스 가중치만으로는 DermNet 내부 불균형이 보정되지 않음 → 클래스별 추가 가중치 필요.
 
 ### B. SCIN (Google)
 
@@ -154,9 +177,11 @@ ISIC/HAM10000에서 커버되지 않는 5개 양성 클래스는 Fitzpatrick17k 
 
 구현 핵심:
 - `facebook/dinov2-base` (HuggingFace) — Classifier head: Linear(768→6)
-- Kaggle DermNet 6종 매핑 후 `ConcatDataset`
-- `WeightedRandomSampler`: AI Hub weight=1.0, DermNet weight=1.5
+- Kaggle DermNet **3종 매핑** (건선·아토피·여드름) 후 `ConcatDataset` ← §2A 검증 결과 반영
+- `WeightedRandomSampler`: AI Hub weight=1.0, DermNet weight=1.5 + **DermNet 내 클래스별 추가 보정** (여드름 2.0x)
 - AugMix 적용 (도메인 일반화 효과 검증)
+
+> ⚠️ **주사·지루피부염·정상** 클래스는 DermNet 커버 불가 — AI Hub 합성 데이터만으로 학습됨. 해당 클래스의 도메인 갭은 이 플랜으로 해소되지 않음.
 
 ### DS14 — Plan B: DenseNet121 유지 + DermNet 혼합 (빠른 검증)
 
@@ -164,6 +189,8 @@ ISIC/HAM10000에서 커버되지 않는 5개 양성 클래스는 Fitzpatrick17k 
 **소요 시간**: 1~2주 (Plan A 이전 baseline)
 
 DermNet NZ 기반 EfficientNet-B2 단독 **89.55%** 달성 사례(MDPI 2025) 참고. DenseNet121도 대규모 실제 데이터 혼합 시 80% 도달 가능성 있음.
+
+> ⚠️ 위 논문 성능은 DermNet 자체 평가(in-distribution)이며, 우리 DS14 6종 도메인(안면부 한정)에서의 실제 성능은 다를 수 있음.
 
 ---
 
@@ -225,40 +252,51 @@ DS14/DS15 모두 공유 backbone으로 사용 가능 → 장기적으로 멀티�
 1. TTA 적용 → DS14 25% → ~30% 확인 (상한선 파악용)
 
 [1~2주 — DS14 Plan B 선행]
-2. Kaggle DermNet 다운로드 + 6종 매핑
-3. DenseNet121 + DermNet 혼합 학습 (AugMix)
-4. external val 평가 → 75% 이상 확인
+2. Kaggle DermNet 다운로드 확인 (이미 보유)
+3. DermNet 3종(건선·아토피·여드름) 매핑 + 클래스별 가중치 보정
+   ※ 6종 매핑 불가 — §2A 검증 결과 참고 (지루피부염 폴더 없음, 주사 분리 불가)
+4. DenseNet121 + DermNet 혼합 학습
+5. external val 평가 → 건선·아토피·여드름 3종 75% / 전체(주사·지루·정상 포함) 성능 별도 측정
 
 [2~3주 — DS14 Plan A]
-5. DinoV2 backbone 교체 + DermNet 혼합 → 80~88% 목표
+6. DinoV2 backbone 교체 + DermNet 혼합 → 80~88% 목표 (3종 커버 클래스 기준)
 
 [병행 — DS15 외부 데이터 준비]
-6. ISIC 2019/2020 다운로드 → DS15 15종 매핑 (10종 가능)
-7. HAM10000 → 6종 추출 (피부경 이미지 주의)
-8. DS15 모델 DinoV2 + ISIC 혼합 학습 → ≥ 78% 목표
+7. ISIC 2019/2020 다운로드 → DS15 15종 매핑 (10종 가능)
+8. HAM10000 → 6종 추출 (피부경 이미지 주의)
+9. DS15 모델 DinoV2 + ISIC 혼합 학습 → ≥ 78% 목표
 
 [4주+ — 통합]
-9. PanDerm backbone → DS14 + DS15 공유 backbone 멀티헤드 구조
-   (data-dataset-15-memoized-starlight.md §6 Phase 3 참고)
+10. PanDerm backbone → DS14 + DS15 공유 backbone 멀티헤드 구조
+    (data-dataset-15-memoized-starlight.md §6 Phase 3 참고)
 ```
 
 ---
 
 ## 8. 신규/수정 파일 목록
 
+**구현 완료:**
+
+| 파일 | 대상 | 역할 | 상태 |
+|------|------|------|------|
+| `ai/preprocessing/external_preprocessor.py` | DS14 | DermNet 디렉토리 → CSV 생성 (3종 매핑) | ✅ 완료 |
+| `ai/dataset/dataset.py` | DS14 | `ExternalFacialDataset` 추가 | ✅ 완료 |
+| `ai/training/classifier/config.py` | DS14 | `extra_data_dir`, `external_weight` 필드 | ✅ 완료 |
+| `ai/training/classifier/train.py` | DS14 | ConcatDataset + WeightedRandomSampler + warmup 수정 | ✅ 완료 |
+| `ai/testing/evaluate.py` | 공통 | `ExternalFacialDataset` 자동 감지 분기 | ✅ 완료 |
+
+**미구현 (예정):**
+
 | 파일 | 대상 | 역할 |
 |------|------|------|
-| `ai/preprocessing/external_preprocessor.py` (신규) | DS14 + DS15 공통 | 디렉토리 기반 → CSV 생성 |
-| `ai/dataset/dataset.py` (수정) | 공통 | `ExternalFacialDataset` 추가, AugMix 적용 |
 | `ai/training/classifier/model.py` (수정) | 공통 | `build_dinov2_classifier()` 추가 |
-| `ai/training/classifier/config.py` (수정) | DS14 | `extra_data_dir`, `external_weight` 필드 |
-| `ai/training/classifier/config_15.py` (수정) | DS15 | FocalLoss 설정, 악성 클래스 가중치 |
-| `ai/training/classifier/train.py` (수정) | DS14 | ConcatDataset + WeightedRandomSampler |
-| `ai/training/classifier/train_15.py` (수정) | DS15 | FocalLoss + Recall 기준 best 저장 |
+| `ai/training/classifier/config_15.py` (신규) | DS15 | FocalLoss 설정, 악성 클래스 가중치 |
+| `ai/training/classifier/train_15.py` (신규) | DS15 | FocalLoss + Recall 기준 best 저장 |
+| `ai/preprocessing/aihub_preprocessor_15.py` (신규) | DS15 | DS15 ZIP 파싱 (방향 없음), 15종 CSV 생성 |
 
 수정하지 않는 파일:
 - `ai/inference/app.py` — MODEL_PATH 환경변수 교체만 필요
-- `ai/testing/evaluate.py`, `threshold_opt.py` — 재사용 가능
+- `ai/testing/threshold_opt.py` — 재사용 가능
 
 ---
 
