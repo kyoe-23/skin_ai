@@ -34,7 +34,7 @@ from sklearn.metrics import (
 from ..training.classifier.config import ClassifyConfig
 from ..training.classifier.model import build_classifier
 from ..training.utils import get_device, resolve_num_workers
-from ..dataset.dataset import AihubFacialDataset, get_transforms, worker_init_fn
+from ..dataset.dataset import AihubFacialDataset, ExternalFacialDataset, get_transforms, worker_init_fn
 
 logger = logging.getLogger(__name__)
 
@@ -193,10 +193,17 @@ def main():
         csv_path = fallback
 
     eval_transform = get_transforms("val", config)
-    eval_dataset = AihubFacialDataset(
-        str(csv_path), transform=eval_transform, root_dir=args.root_dir,
-        direction=None,
-    )
+
+    # CSV 컬럼으로 데이터셋 타입 자동 감지
+    import pandas as _pd
+    _columns = _pd.read_csv(csv_path, nrows=0).columns.tolist()
+    if "image_path" in _columns:
+        eval_dataset = ExternalFacialDataset(str(csv_path), transform=eval_transform)
+    else:
+        eval_dataset = AihubFacialDataset(
+            str(csv_path), transform=eval_transform, root_dir=args.root_dir,
+            direction=None,
+        )
 
     num_workers = resolve_num_workers(device, config.num_workers)
     eval_loader = DataLoader(

@@ -26,6 +26,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from torch.utils.data import DataLoader, ConcatDataset, WeightedRandomSampler
 
 # ── 로컬 ─────────────────────────────────────────────────────────
@@ -334,10 +335,16 @@ def main():
         weight_decay=config.weight_decay,
     )
 
-    # warmup 이후 남은 에폭 동안 코사인 감쇠
+    # warmup: 0 → lr 선형 증가 후 코사인 감쇠
     cosine_t_max = max(config.num_epochs - config.warmup_epochs, 1)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=cosine_t_max,
+    scheduler = SequentialLR(
+        optimizer,
+        schedulers=[
+            LinearLR(optimizer, start_factor=1e-3, end_factor=1.0,
+                     total_iters=config.warmup_epochs),
+            CosineAnnealingLR(optimizer, T_max=cosine_t_max),
+        ],
+        milestones=[config.warmup_epochs],
     )
 
     # ── 체크포인트 복원 ──────────────────────────────────────────
@@ -360,6 +367,7 @@ def main():
 
     # ── 학습 루프 ────────────────────────────────────────────────
     no_improve = 0
+    started_at = datetime.now().isoformat()
     print("\n학습 시작...\n")
 
     for epoch in range(start_epoch, config.num_epochs):
@@ -371,9 +379,7 @@ def main():
             model, train_loader, criterion, optimizer, device,
         )
 
-        # warmup 이후에만 스케줄러 step
-        if epoch >= config.warmup_epochs:
-            scheduler.step()
+        scheduler.step()
 
         # 검증
         val_loss, val_top1, val_top3 = validate(
@@ -452,7 +458,7 @@ def main():
         "aihub_train_samples": aihub_train_size,
         "external_train_samples": external_train_size,
         "device": str(device),
-        "started_at": datetime.now().isoformat(),
+        "started_at": started_at,
         "history": history,
     }
 
