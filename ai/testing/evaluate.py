@@ -160,7 +160,7 @@ def main():
     parser.add_argument("--data_dir", default=None)
     parser.add_argument(
         "--split", default=DEFAULT_SPLIT,
-        help="평가할 split (val 또는 test, 기본: val — AI Hub 데이터셋은 test 미제공)",
+        help="평가할 split (val 또는 test, 기본: val — test.csv 없으면 val.csv로 fallback)",
     )
     parser.add_argument(
         "--root_dir", default=None,
@@ -264,7 +264,7 @@ def main():
     target_msg = "달성" if top1_acc >= config.target_top1_acc else "미달"
 
     print("\n" + "=" * 60)
-    print(" SkinAI 분류 모델 평가 결과 (AI Hub 08-14)")
+    print(" SkinAI 분류 모델 평가 결과")
     print(f" 모델: {config.backbone}")
     print("-" * 60)
     print(f" Top-1 Accuracy : {top1_acc * 100:.2f}%  가이드라인 목표(80%): {target_msg}")

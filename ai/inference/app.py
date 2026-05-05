@@ -1,4 +1,4 @@
-"""SkinAI Flask 추론 API — AI Hub 08-14 6종 분류 + Grad-CAM.
+"""SkinAI Flask 추론 API — 피부질환 분류 + Grad-CAM.
 
 엔드포인트:
     POST /predict  — 이미지 분류 + Grad-CAM + 임상 참고정보
@@ -514,7 +514,7 @@ if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
 
     logger.info("=" * 60)
-    logger.info("SkinAI Prediction Service (AI Hub 08-14)")
+    logger.info("SkinAI Prediction Service")
     logger.info(f"  Port    : {port}")
     logger.info(f"  Debug   : {debug}")
     logger.info("=" * 60)

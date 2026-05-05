@@ -1,12 +1,19 @@
-"""AI Hub 08-14 PyTorch Dataset 클래스.
+"""AI Hub 안면부 피부질환 PyTorch Dataset 클래스.
 
-CSV 컬럼:
+DS14(6종)·DS15(15종) 등 AI Hub 전처리 결과 CSV를 공용으로 읽는다.
+
+CSV 컬럼 (AihubFacialDataset / AihubSegDataset):
     zip_path  : 원천 ZIP 파일의 절대경로
     filename  : ZIP 내 파일명 (예: H0_168820_P1_L0.png)
-    class_idx : 0~5
-    class_name: 건선/아토피피부염/여드름/주사/지루피부염/정상
+    class_idx : 정수 인덱스 (데이터셋별 상이 — metadata.json 참조)
+    class_name: 한국어 클래스명
     split     : train / val
     direction : front / side
+
+CSV 컬럼 (ExternalFacialDataset):
+    image_path: 프로젝트 루트 기준 상대경로
+    class_idx : 정수 인덱스
+    class_name: 한국어 클래스명
 """
 
 # ── 표준 라이브러리 ──────────────────────────────────────────────
@@ -201,10 +208,11 @@ def _load_image_from_zip(zip_path: str, filename: str) -> Optional[Image.Image]:
 # ── 공개 클래스 ──────────────────────────────────────────────────
 
 class AihubFacialDataset(Dataset):
-    """AI Hub 08-14 안면부 피부질환 분류 Dataset.
+    """AI Hub 안면부 피부질환 분류 Dataset.
 
     전처리된 CSV(zip_path + filename 컬럼)를 읽어
     ZIP 파일에서 직접 이미지를 로드한다.
+    DS14(6종)·DS15(15종) 모두 지원.
 
     Args:
         csv_path: 전처리된 CSV 경로 (train.csv, val.csv, test.csv)

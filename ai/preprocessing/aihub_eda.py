@@ -253,7 +253,7 @@ def run_eda(processed_dir: str):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
-    print("AI Hub 08-14 EDA")
+    print("피부질환 데이터셋 EDA")
     print("=" * 60)
 
     setup_korean_font()
@@ -274,7 +274,7 @@ def run_eda(processed_dir: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AI Hub 08-14 EDA")
+    parser = argparse.ArgumentParser(description="피부질환 데이터셋 EDA")
     parser.add_argument("--processed_dir", required=True, help="전처리 결과 경로")
     args = parser.parse_args()
     run_eda(args.processed_dir)

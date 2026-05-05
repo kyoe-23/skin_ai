@@ -1,8 +1,8 @@
 """Claude API 단독 테스트 — PyTorch 없이 LLM 응답 품질만 검증.
 
-§4-1 테스트 케이스:
+테스트 항목:
   1) API 연결 확인 (단순 프롬프트)
-  2) llm_service.generate_report() 전체 파이프라인 (§4-3 체크리스트 케이스)
+  2) llm_service.generate_report() 전체 파이프라인 (다양한 신뢰도·클래스 케이스)
 
 실행:
     python ai/testing/test_llm.py
@@ -24,7 +24,6 @@ load_dotenv("ai/inference/.env")
 # ── 상수 ─────────────────────────────────────────────────────────
 DIVIDER = "=" * 60
 
-# §4-3 체크리스트 케이스
 TEST_CASES = [
     {
         "label": "높은 신뢰도 — 아토피피부염",
@@ -137,7 +136,7 @@ def _test_api_connection() -> bool:
 # ── 2단계: generate_report() 파이프라인 테스트 ─────────────────
 
 def _test_generate_report() -> None:
-    """§4-3 체크리스트 케이스로 llm_service.generate_report() 검증."""
+    """다양한 신뢰도·클래스 케이스로 llm_service.generate_report() 검증."""
     from llm_service import generate_report
 
     llm_enabled = os.environ.get("LLM_ENABLED", "false").lower() == "true"
@@ -167,7 +166,7 @@ def _test_generate_report() -> None:
 
 if __name__ == "__main__":
     print(DIVIDER)
-    print("SkinAI LLM 단독 테스트 (§4-1)")
+    print("SkinAI LLM 단독 테스트")
     print(DIVIDER)
 
     try:
