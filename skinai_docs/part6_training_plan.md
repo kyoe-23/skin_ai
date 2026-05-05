@@ -91,32 +91,29 @@ ISIC 혼합으로 **8종만 도메인 갭 완화**, 나머지 7종은 합성 데
 
 ## 3. 학습 단계 계획
 
-### Phase 1 — DS15 단독 Baseline
+### Phase 1 — DS15 단독 Baseline ✅ 완료
 
-**목적**: AI Hub 합성 데이터만으로 DS15 baseline 성능 측정  
-**소요 시간**: ~1일 (H100 기준 50 epoch)  
-**즉시 시작 가능 조건**: `config_15.py`, `train_15.py` 신규 작성 후
+**결과**: Colab 100 epoch 학습 완료 (`ai/results/DS15/training DS_15.ipynb`)
 
 ```
-학습: data/processed/DS15/train.csv  (12,000장, 15종 균형)
-검증: data/processed/DS15/val.csv    (1,500장)
-backbone: DenseNet121
-loss: CrossEntropyLoss (label_smoothing=0.1)  # 균형 데이터이므로 FocalLoss 불필요
-sampler: shuffle  # 균형 데이터이므로 WeightedRandomSampler 불필요
-checkpoint: ai/results/DS15/baseline/
+학습: data/processed_15/train.csv  (12,000장, 15종 균형)  ← Colab 경로
+검증: data/processed_15/val.csv    (1,500장)
+backbone: DenseNet121, batch_size=64, lr=0.0005
+loss: CrossEntropyLoss (label_smoothing=0.1)
+checkpoint: ai/results/DS15/checkpoints/   ← 실제 저장 경로
 ```
 
-**목표**: Top-1 ≥ 75% (15-class, AI Hub 가이드라인)
+**결과 수치**: best_epoch=95, **val Top-1 99.93%**  
+> ⚠️ AI Hub 큐레이션 val 세트이므로 실제 성능 과대평가 가능성 높음. test split 재학습 후 진짜 성능 확인 필요.
+
+**목표**: Top-1 ≥ 75% (AI Hub 가이드라인) — ✅ 달성
 
 ---
 
 ### Phase 2 — ISIC 2019 전처리
 
 **목적**: ISIC 2019 → DS15 클래스 매핑 CSV 생성  
-**소요 시간**: ~30분 (코드 수정 포함)
-
-ISIC 2019 폴더 구조가 `data/ISIC 2019/{LABEL}/` 형태로 이미 클래스별 분리되어 있어  
-`external_preprocessor.py`를 flat 폴더 구조 지원(`--flat` 옵션)으로 수정 후 재사용한다.
+**코드 준비**: 완료 (`--flat`, `--max_per_class`, `--class_idx_map_file` 추가) / **Drive 업로드 대기 중**
 
 ```bash
 python -m ai.preprocessing.external_preprocessor \
@@ -125,24 +122,12 @@ python -m ai.preprocessing.external_preprocessor \
     --val_ratio 0.15 \
     --source isic2019 \
     --class_map_file ai/preprocessing/isic2019_class_map.json \
+    --class_idx_map_file ai/preprocessing/ds15_class_idx_map.json \
     --flat \
     --max_per_class 3000   # NV 12,875장 → 3,000장 다운샘플
 ```
 
-신규 작성 파일: `ai/preprocessing/isic2019_class_map.json`
-
-```json
-{
-  "MEL":  "악성흑색종",
-  "BCC":  "기저세포암",
-  "SCC":  "편평세포암",
-  "AK":   "광선각화증",
-  "NV":   "멜라닌세포모반",
-  "BKL":  "지루각화증",
-  "DF":   "피부섬유종",
-  "VASC": "혈관종"
-}
-```
+완료된 파일: `ai/preprocessing/isic2019_class_map.json` ✅, `ai/preprocessing/ds15_class_idx_map.json` ✅
 
 **NV 다운샘플 후 예상 분포:**
 
@@ -209,29 +194,31 @@ checkpoint: ai/results/DS14/mixed_dermnet/
 
 ---
 
-## 4. 신규 작성 필요 파일
+## 4. 파일 작업 현황
 
-| 파일 | Phase | 내용 |
-|------|-------|------|
-| `ai/training/classifier/config_15.py` | 1 | DS15 전용 설정 (num_classes=15, FocalLoss, 악성 클래스 가중치) |
-| `ai/training/classifier/train_15.py` | 1 | FocalLoss, 악성 클래스 Recall 기준 best 저장 |
-| `ai/preprocessing/isic2019_class_map.json` | 2 | ISIC 레이블 → DS15 클래스 매핑 |
-| `ai/preprocessing/external_preprocessor.py` 수정 | 2 | `--flat`, `--max_per_class` 옵션 추가 |
+| 파일 | Phase | 내용 | 상태 |
+|------|-------|------|------|
+| `ai/preprocessing/isic2019_class_map.json` | 2 | ISIC 레이블 → DS15 클래스 매핑 | ✅ 완료 |
+| `ai/preprocessing/ds15_class_idx_map.json` | 2 | DS15 클래스 → 인덱스 매핑 | ✅ 완료 |
+| `ai/preprocessing/external_preprocessor.py` 수정 | 2 | `--flat`, `--max_per_class`, `--class_idx_map_file` 추가 | ✅ 완료 |
+| `ai/training/classifier/train.py` 수정 | 4 | `ExternalFacialDataset`에 `root_dir=args.root_dir` 전달 | ✅ 완료 |
 
-기존 코드 재사용 (수정 없음):
-- `ai/dataset/dataset.py` — `ExternalFacialDataset`, `AihubFacialDataset` 그대로 사용
-- `ai/testing/evaluate.py` — DS15도 동일 (num_classes는 체크포인트에서 자동 복원)
-- `ai/training/classifier/train.py` — DS14 혼합 학습 그대로 사용
+> `config_15.py`, `train_15.py` 별도 작성 불필요 — 기존 `train.py`의 `--data_dir`/`--num_classes` CLI 인자 + `load_from_metadata()`로 DS15 지원 완료.
+
+기존 코드 재사용:
+- `ai/dataset/dataset.py` — `ExternalFacialDataset(root_dir=...)`, `AihubFacialDataset` 그대로 사용
+- `ai/testing/evaluate.py` — DS15도 동일 (num_classes는 체크포인트에서 자동 복원, `--data_dir` 오버라이드 필요)
+- `ai/training/classifier/train.py` — DS14 혼합 학습 및 DS15 단독 학습 모두 사용
 
 ---
 
 ## 5. Colab 노트북 계획
 
-| 노트북 | Phase | 내용 |
-|--------|-------|------|
-| `train_mixed.ipynb` (경로 수정) | 4 | `EXTRA_DATA_DIR` → `data/processed/dermnet` 반영 |
-| `train_ds15_baseline.ipynb` (신규) | 1 | DS15 단독 baseline 학습 |
-| `train_ds15_mixed.ipynb` (신규) | 3 | DS15 + ISIC 2019 혼합 학습 |
+| 노트북 | Phase | 내용 | 상태 |
+|--------|-------|------|------|
+| `train_mixed.ipynb` (경로 수정) | 4 | `EXTRA_DATA_DIR=data/processed/dermnet` 반영 | ✅ 완료 |
+| `ai/results/DS15/training DS_15.ipynb` | 1 | DS15 단독 baseline 학습 (Colab 실행 완료) | ✅ 완료 |
+| `train_ds15_mixed.ipynb` (신규) | 3 | DS15 + ISIC 2019 혼합 학습 | 🔴 미작성 |
 
 ---
 
@@ -239,13 +226,14 @@ checkpoint: ai/results/DS14/mixed_dermnet/
 
 | 순위 | 항목 | 상태 | 선행 조건 |
 |------|------|------|----------|
-| 1 | `config_15.py` + `train_15.py` 작성 | 🔴 미작성 | 없음 |
-| 2 | DS15 baseline 학습 (Phase 1) | 🔴 대기 | 위 완료 |
-| 3 | `external_preprocessor.py` `--flat` 수정 + `isic2019_class_map.json` | 🔴 미작성 | 없음 |
-| 4 | ISIC 2019 전처리 (Phase 2) | 🔴 대기 | 위 완료 |
-| 5 | DS14 DermNet 혼합 학습 (Phase 4) | 🟡 경로 수정만 필요 | `train_mixed.ipynb` 경로 수정 |
-| 6 | DS15 ISIC 혼합 학습 (Phase 3) | 🔴 대기 | Phase 1·2 완료 |
-| 7 | HAM10000 보조 활용 | 🔴 보류 | Phase 3 성능 미달 시 검토 |
+| — | DS15 baseline 학습 (Phase 1) | 🟢 완료 (val Top-1 99.93%, epoch 95) | — |
+| — | `external_preprocessor.py --flat` + `isic2019_class_map.json` + `ds15_class_idx_map.json` | 🟢 완료 | — |
+| — | `train_mixed.ipynb` `EXTRA_DATA_DIR` 경로 수정 | 🟢 완료 | — |
+| 1 | DS15 test split 재학습 (3-way split, 640/80/80 per class) | 🟡 권고 | `split_dataset.py` 작성 필요 |
+| 2 | ISIC 2019 Drive 업로드 완료 후 전처리 (Phase 2) | 🟡 Drive 업로드 대기 | Drive 업로드 완료 |
+| 3 | DS14 DermNet 혼합 학습 (Phase 4) | 🟡 Colab 실행 대기 | DermNet Drive 업로드 완료 |
+| 4 | `train_ds15_mixed.ipynb` 작성 + DS15 ISIC 혼합 학습 (Phase 3) | 🔴 대기 | Phase 1(재학습)·2 완료 |
+| 5 | HAM10000 보조 활용 | 🔴 보류 | Phase 3 성능 미달 시 검토 |
 
 ---
 

@@ -1,8 +1,9 @@
-# 파트 4 — DS14 모델 실제 이미지 테스트 기획안
+# 파트 4 — DL 모델 실제 이미지 성능 테스트 기획안
 
-> 작성일: 2026-04-27
-> 대상 모델: DenseNet121 (DS14, [ai/results/DS14/checkpoint/best.pth](../ai/results/DS14/checkpoint/best.pth))
-> 학습 결과: Top-1 92.27%, Macro F1 0.9437, Macro AUC 0.9921
+> 최종 수정: 2026-05-05
+> 대상 모델:
+> - DS14 DenseNet121 ([ai/results/DS14/checkpoint/best.pth](../ai/results/DS14/checkpoint/best.pth)) — 학습 val Top-1 92.27%
+> - DS15 DenseNet121 ([ai/results/DS15/checkpoints/best.pth](../ai/results/DS15/checkpoints/best.pth)) — 학습 val Top-1 99.93% (AI Hub 큐레이션 val — 과대평가 주의)
 
 ---
 
@@ -10,248 +11,202 @@
 
 ### 1.1 배경
 
-DS14 모델은 AI Hub 안면부 피부질환 합성데이터(12,000장, 클래스당 동일 수량)로 학습되어 가이드라인 목표(Top-1 80%, stretch 85%)를 큰 폭으로 초과 달성했다. 그러나 다음 한계를 가진다:
+DS14·DS15 모델은 AI Hub 합성데이터로만 학습·검증됐다. 다음 한계가 있다:
 
-- **합성데이터에만 검증됨**: 실제 환자 이미지·스마트폰 촬영본의 일반화 성능 미확인
-- **임상 약점 존재**: 지루피부염 Precision 0.798(다른 클래스가 지루피부염으로 오분류) — 실제 환경에서 더 악화될 가능성
-- **End-to-End 미검증**: Flask 서버 → 백엔드 프록시 → 프론트 UI까지의 통합 워크플로우가 실 사용 환경에서 동작하는지 검증되지 않음
+- **합성→실제 도메인 갭 미측정**: 실제 임상 이미지에서의 일반화 성능 미확인
+- **DS14 약점**: 지루피부염 Precision 0.798 — 실제 환경에서 더 악화될 가능성
+- **DS15 외부 검증 없음**: 학습 후 실제 피부종양 이미지로의 전이 성능 미측정
 
 ### 1.2 목적
 
-의료진 진료 보조용 배포 전 다음을 정량 검증한다:
+외부 실제 임상 이미지를 활용해 각 모델의 도메인 갭을 정량화한다.
 
-1. 합성데이터 외 실제 이미지 일반화 성능 측정 (도메인 갭 정량화)
-2. 임상 약점 클래스(지루피부염·아토피)의 실제 환경 재현성 확인
-3. Edge case(저조도·흐림·OOD) 견고성 평가 및 `uncertain` 플래그 정상 동작 확인
-4. End-to-End 응답 시간(P50, P95) 측정
-5. (LLM 연동 시) 자연어 리포트 품질·면책 조항 누락 여부
+1. DS14 모델 — DermNet NZ 실제 임상 이미지 3종(아토피·건선·여드름) 성능 측정
+2. DS15 모델 — ISIC 2019 피부종양 이미지 8종 성능 측정
+3. 도메인 갭 수치를 Phase 3·4 혼합 학습(part6) 전·후 비교 기준으로 활용
 
 ---
 
-## 2. 인프라 현황
+## 2. 테스트 데이터셋
 
-| 항목 | 위치 | 상태 |
-|---|---|---|
-| 체크포인트 | [ai/results/DS14/checkpoint/best.pth](../ai/results/DS14/checkpoint/best.pth) (80MB) | 준비 완료 |
-| Threshold | [ai/results/DS14/thresholds.json](../ai/results/DS14/thresholds.json) | 준비 완료 |
-| Flask 서버 | [ai/inference/app.py](../ai/inference/app.py) — `POST /predict` | 준비 완료 |
-| 평가 스크립트 (CSV 배치) | [ai/testing/evaluate.py](../ai/testing/evaluate.py) | 준비 완료 |
-| 백엔드 프록시 | [backend/src/routes/ai.js](../backend/src/routes/ai.js) — `/api/ai/predict` | 준비 완료 |
-| 프론트 분석 UI | [frontend/html/ai_analyze.html](../frontend/html/ai_analyze.html) | 준비 완료 |
-| Sanity 데이터 | [data/processed/DS14/val.csv](../data/processed/DS14/val.csv) (1,200장) | 준비 완료 |
-| **외부 이미지 일괄 테스트 도구** | (미존재) | **신규 필요** |
+### 4-A: DermNet NZ (DS14 도메인 갭 측정)
 
-→ 인프라 90% 완비. 신규 작성 코드는 외부 이미지 일괄 테스트 도구·리포트 생성기 2개에 한정.
+- **출처**: `data/dermnet/test/` (로컬, 홀드아웃 — 학습에 미사용)
+- **CSV**: `data/processed/dermnet/test.csv` (이미 존재)
+- **구성**: 1,096장 / 3종 (아토피피부염 432, 건선 352, 여드름 312)
+- **평가 대상 클래스**: DS14 6종 중 3종만 커버 (주사·지루피부염·정상 제외)
+- **의의**: DS14 합성 학습 → 실제 임상 이미지 간 도메인 갭 정량화
 
----
+| 클래스 | 장수 | DS14 class_idx |
+|--------|-----:|:--------------:|
+| 아토피피부염 | 432 | 1 |
+| 건선 | 352 | 0 |
+| 여드름 | 312 | 2 |
 
-## 3. 테스트 합격 기준
-
-| 검증 항목 | 측정 방식 | 합격 기준 |
-|---|---|---|
-| 합성데이터 재현성 | val.csv 60장 Flask 호출 | 학습 시 결과 ±2%p 이내 |
-| 도메인 갭 (외부 임상) | 외부 데이터셋 Top-1 / Macro F1 | Top-1 ≥ **75%** (합성 92% → 실제 -17%p 허용) |
-| 실사용자 환경 | 스마트폰 촬영 이미지 | Top-1 ≥ **70%**, P95 응답 < 5초 |
-| 견고성 (Edge case) | 저조도·흐림·OOD 입력 | `uncertain=true` 또는 confidence<threshold 비율 ≥ **80%** |
-| 임상 약점 검증 | 지루피부염 Precision | 외부 셋에서 ≥ **0.70** (현 합성 0.798) |
-| LLM 리포트 품질 | 체크리스트 정성 평가 | 면책 문구 100% 포함, 약품명 누설 0건 |
-
-> 합격 기준은 진료 보조용 MVP 기준. 의료기기 인증 단계에서는 별도 임상시험 설계 필요.
+> ⚠️ `data/processed/dermnet/test.csv`의 `image_path`가 로컬 절대경로로 저장된 경우
+> `evaluate.py --root_dir {PROJECT_ROOT}`로 복원 가능
 
 ---
 
-## 4. 테스트 데이터셋 구성
+### 4-B: ISIC 2019 (DS15 도메인 갭 측정)
 
-### A. Sanity Check — 60장
-- [data/processed/DS14/val.csv](../data/processed/DS14/val.csv)에서 클래스당 10장 무작위 샘플
-- 추론 파이프라인 정상 동작 + 학습 시 metric 재현 확인
-- 저장 경로: `data/realtest/sanity/`
+- **출처**: `data/ISIC 2019/` (로컬, 전체 사용)
+- **CSV**: `data/processed/isic2019/` (미생성 — 아래 전처리 명령 선행 필요)
+- **구성**: 25,331장 / 8종 (DS15 15종 중 8종 커버)
+- **평가 대상 클래스**: DS15 8종 (아래 표)
+- **의의**: DS15 합성 학습 → 실제 피부종양 이미지 간 도메인 갭 정량화
 
-### B. 외부 임상 이미지 — 클래스당 20~30장 (총 약 150장)
-- 출처 후보:
-  - **DermNet NZ** — 공개 피부과 이미지 라이브러리
-  - **ISIC Archive** — 국제 피부영상 컨소시엄 (주로 색소성 병변 위주, 본 프로젝트 6종과 부분 매핑)
-  - **SCIN dataset** ([scin_legacy/](../scin_legacy/) 보유) — 50종 분류 데이터 → 6종 매핑 필요
-  - 공개 피부과 교과서 이미지 (라이선스 확인 필수)
-- **외부 라벨 → AI Hub 6종 매핑 표 작성 필수** (예: SCIN의 "psoriasis vulgaris" → 건선)
-- 매핑 불가 케이스는 "기타"로 분리하여 평가 제외
-- 저장 경로: `data/realtest/external/{class_name}/`
+| ISIC 레이블 | DS15 클래스 | 원본 장수 | 평가 장수 (val, 15%) |
+|------------|------------|----------:|--------------------:|
+| MEL | 악성흑색종 | 4,522 | ~678 |
+| BCC | 기저세포암 | 3,323 | ~498 |
+| NV | 멜라닌세포모반 | 12,875 | ~1,931 |
+| BKL | 지루각화증 | 2,624 | ~394 |
+| AK | 광선각화증 | 867 | ~130 |
+| SCC | 편평세포암 | 628 | ~94 |
+| VASC | 혈관종 | 253 | ~38 |
+| DF | 피부섬유종 | 239 | ~36 |
 
-### C. 실사용자 시나리오 — 클래스당 10장 (총 60장)
-- 스마트폰 촬영 (자체 또는 협력자)
-- 정상 클래스는 다양한 인종·연령·조명 조건 포함
-- **개인정보 동의서 사전 확보 필수**
-- 저장 시 EXIF 제거 + 익명 ID 부여 (예: `user_001.jpg`)
-- 저장 경로: `data/realtest/user/`
-
-### D. Edge Case — 50장
-- 저조도 (10장)
-- 흔들림·포커스 아웃 (10장)
-- 회전·뒤집힘 (10장)
-- 부분 가림 (마스크·머리카락·안경) (10장)
-- 비안면부 (손·등 — OOD reject 테스트) (10장)
-- 저장 경로: `data/realtest/edge/{subtype}/`
-
----
-
-## 5. 4-Phase 실행 계획
-
-### Phase 1 — 환경 점검 (반나절)
-- Flask 서버 기동: `cd ai/inference && python app.py`
-- A 데이터셋 60장으로 `realtest_runner.py` 일괄 실행
-- 산출: `ai/results/DS14/realtest/phase1_sanity.csv`
-- **합격 시 Phase 2 진행**, 불합격 시 환경·체크포인트·Threshold 점검
-
-### Phase 2 — 도메인 갭 측정 (1일)
-- B 데이터셋으로 Top-1, Macro F1, Per-class P/R/F1, Confusion Matrix 산출
-- 합성(val.csv) vs 외부(B) confusion matrix 시각 비교
-- 산출:
-  - `ai/results/DS14/realtest/phase2_external_metrics.json`
-  - `ai/results/DS14/realtest/phase2_external_cm.png`
-  - `ai/results/DS14/realtest/phase2_synthetic_vs_external_cm.png`
-
-### Phase 3 — 실사용자 워크플로우 (1일)
-- C 데이터셋을 [frontend/html/ai_analyze.html](../frontend/html/ai_analyze.html)로 직접 업로드
-- 분류 결과 + Grad-CAM + LLM 리포트(연동 시) 종합 평가
-- 응답 시간 P50/P95 측정 (`processing_time_ms` 필드 활용)
-- LLM 리포트 정성 평가 ([llm_api_research.md §4-3](llm_api_research.md) 체크리스트 참조)
-- 산출:
-  - `ai/results/DS14/realtest/phase3_user_log.csv`
-  - `ai/results/DS14/realtest/phase3_qualitative_checklist.md`
-
-### Phase 4 — Edge Case (반나절)
-- D 데이터셋으로 confidence/uncertain 분포 측정
-- 비안면부(OOD) 입력에서 `uncertain=true` 비율이 80% 이상 나오는지 확인
-- 산출:
-  - `ai/results/DS14/realtest/phase4_edge.csv`
-  - `ai/results/DS14/realtest/phase4_confidence_hist.png`
-
----
-
-## 6. 신규 작성 파일
-
-### `ai/testing/realtest_runner.py`
-**입력**:
-- `--dir`: 이미지 디렉토리
-- `--label`: 정답 라벨 CSV (선택, 있으면 클래스별 metric 산출)
-- `--url`: Flask 엔드포인트 (기본 `http://localhost:5001/predict`)
-- `--output`: 결과 CSV 경로
-
-**동작**:
-1. 디렉토리 내 이미지를 순회하며 multipart로 `/predict` 호출
-2. JSON 응답에서 prediction·confidence·top3·uncertain·processing_time_ms 추출
-3. CSV 저장 + 라벨 있을 시 sklearn으로 P/R/F1·Confusion Matrix 자동 산출
-
-**출력 컬럼**: `filename, true_label, pred_class, confidence, top3_json, uncertain, processing_time_ms`
-
-### `ai/testing/realtest_report.py`
-**입력**: runner가 생성한 CSV
-
-**동작**: Phase별 합격 기준과 비교하여 마크다운 리포트 + Confusion Matrix PNG + confidence 히스토그램 생성
-
-### `skinai_docs/realtest_results_DS14.md` (Phase 실행 완료 후)
-- 4-Phase 결과 종합 리포트
-- 각 Phase 합격 여부, 미달 항목 분석, 후속 액션
-
----
-
-## 7. 결과 저장 구조
-
-```
-ai/results/DS14/realtest/
-├── phase1_sanity.csv
-├── phase2_external_metrics.json
-├── phase2_external_cm.png
-├── phase2_synthetic_vs_external_cm.png
-├── phase3_user_log.csv
-├── phase3_qualitative_checklist.md
-├── phase4_edge.csv
-└── phase4_confidence_hist.png
-```
-
-```
-data/realtest/
-├── sanity/        # A. val.csv에서 추출한 60장
-├── external/      # B. 외부 임상 이미지 (클래스별 디렉토리)
-│   ├── 건선/
-│   ├── 아토피피부염/
-│   └── ...
-├── user/          # C. 실사용자 스마트폰 (익명 ID)
-└── edge/          # D. Edge case
-    ├── lowlight/
-    ├── blur/
-    ├── rotated/
-    ├── occluded/
-    └── ood/
-```
-
----
-
-## 8. 위험 및 대응
-
-| 위험 | 대응 |
-|---|---|
-| 외부 데이터셋 라이선스 충돌 | DermNet/ISIC 약관 사전 검토, 학술 사용 한정 명시. 결과 발표 시 출처 명기 |
-| 실사용자 이미지 개인정보 | 동의서 양식 확보, EXIF 제거 + 익명 ID 부여, 저장소 접근 제한 |
-| 외부 라벨 ↔ AI Hub 6종 매핑 모호 | 매핑 표 작성 후 도메인 전문가(피부과 자문) 검수, 모호 케이스는 "기타"로 분리 평가 제외 |
-| 도메인 갭이 너무 큰 경우 | Phase 2 결과 분석 → 외부 데이터로 fine-tuning 또는 augmentation 정책 재설계 |
-| LLM 비활성 상태 | Phase 3 정성 평가는 분류 결과만 평가, LLM 리포트 평가는 [llm_api_research.md](llm_api_research.md) 연동 후 별도 진행 |
-| Flask 서버 동시성 부족 | gunicorn `-w 2`로 기동 테스트 (`gunicorn -w 2 -b 0.0.0.0:5001 "app:create_app()"`) |
-
----
-
-## 9. 실행 명령 요약
-
+**전처리 명령 (ISIC 2019 CSV 생성 — 평가 전 1회 실행):**
 ```bash
-# 0) Flask 서버 기동
-cd ai/inference && python app.py
+python -m ai.preprocessing.external_preprocessor \
+    --root_dir "data/ISIC 2019" \
+    --output_dir data/processed/isic2019 \
+    --source isic2019 \
+    --class_map_file ai/preprocessing/isic2019_class_map.json \
+    --class_idx_map_file ai/preprocessing/ds15_class_idx_map.json \
+    --flat \
+    --max_per_class 3000
+```
 
-# 1) Phase 1 — Sanity check
-python -m ai.testing.realtest_runner \
-    --dir data/realtest/sanity \
-    --label data/processed/DS14/val.csv \
-    --url http://localhost:5001/predict \
-    --output ai/results/DS14/realtest/phase1_sanity.csv
+val.csv (15%)를 홀드아웃 평가셋으로 사용한다.
 
-# 2) Phase 2 — 외부 임상
-python -m ai.testing.realtest_runner \
-    --dir data/realtest/external \
-    --label data/realtest/external/labels.csv \
-    --output ai/results/DS14/realtest/phase2_external.csv
+> ⚠️ `max_per_class 3000` 적용으로 NV(12,875→3,000), MEL(4,522→3,000), BCC(3,323→3,000) 다운샘플됨
 
-python -m ai.testing.realtest_report \
-    --csv ai/results/DS14/realtest/phase2_external.csv \
-    --phase 2
+---
 
-# 3) Phase 3 — 실사용자 (UI 직접 사용 후 응답 로그만 수집)
-python -m ai.testing.realtest_runner \
-    --dir data/realtest/user \
-    --output ai/results/DS14/realtest/phase3_user_log.csv
+## 3. 합격 기준
 
-# 4) Phase 4 — Edge case
-python -m ai.testing.realtest_runner \
-    --dir data/realtest/edge \
-    --output ai/results/DS14/realtest/phase4_edge.csv
+| 모델 | 데이터 | 지표 | 합격 기준 |
+|------|--------|------|----------|
+| DS14 | 4-A DermNet | Top-1 (3종) | ≥ **60%** |
+| DS14 | 4-A DermNet | Macro F1 (3종) | ≥ **0.55** |
+| DS14 | 4-A DermNet | 아토피·건선 Recall | ≥ **0.65** (합성 대비 -20%p 허용) |
+| DS15 | 4-B ISIC 2019 | Top-1 (8종) | ≥ **50%** |
+| DS15 | 4-B ISIC 2019 | 악성 클래스 Recall (MEL/BCC/SCC) | ≥ **0.60** |
 
-python -m ai.testing.realtest_report \
-    --csv ai/results/DS14/realtest/phase4_edge.csv \
-    --phase 4
+> 합성 데이터 학습 모델의 초기 도메인 갭 측정 기준. 혼합 학습(part6 Phase 3·4) 후 재측정해 개선폭 확인.
+
+---
+
+## 4. 평가 도구
+
+### `ai/testing/evaluate.py` (기존)
+
+CSV 기반 배치 평가. 인프라 준비 불필요(Flask 서버 불필요).
+
+**DS14 — 4-A DermNet 평가:**
+```bash
+python -m ai.testing.evaluate \
+    --checkpoint ai/results/DS14/checkpoint/best.pth \
+    --data_dir data/processed/dermnet \
+    --split test \
+    --output_dir ai/results/DS14/realtest/dermnet
+```
+
+**DS15 — DS15 val 평가 (로컬, 체크포인트 검증용):**
+```bash
+python -m ai.testing.evaluate \
+    --checkpoint ai/results/DS15/checkpoints/best.pth \
+    --data_dir data/processed/DS15 \
+    --split val \
+    --output_dir ai/results/DS15/realtest/val
+```
+
+> ⚠️ 학습 시 Colab data_dir이 `data/processed_15`로 기록됨. 로컬 실행 시 반드시 `--data_dir data/processed/DS15` 명시 필요.
+
+**DS15 — 4-B ISIC 2019 평가 (전처리 후):**
+```bash
+python -m ai.testing.evaluate \
+    --checkpoint ai/results/DS15/checkpoints/best.pth \
+    --data_dir data/processed/isic2019 \
+    --split val \
+    --output_dir ai/results/DS15/realtest/isic2019
+```
+
+> `evaluate.py`는 CSV 컬럼을 자동 감지해 `AihubFacialDataset`(zip_path 컬럼)과
+> `ExternalFacialDataset`(image_path 컬럼)을 자동 전환한다.
+
+---
+
+## 5. 실행 순서
+
+```
+① ISIC 2019 전처리 CSV 생성 (4-B 준비)
+   python -m ai.preprocessing.external_preprocessor --flat ...
+
+② DS15 val 평가 (체크포인트 검증)
+   python -m ai.testing.evaluate \
+       --checkpoint ai/results/DS15/checkpoints/best.pth \
+       --data_dir data/processed/DS15 --split val ...
+
+③ DS14 — DermNet 평가 (4-A)
+   python -m ai.testing.evaluate \
+       --checkpoint ai/results/DS14/checkpoint/best.pth \
+       --split test ...
+
+④ DS15 — ISIC 2019 평가 (4-B)
+   python -m ai.testing.evaluate \
+       --checkpoint ai/results/DS15/checkpoints/best.pth \
+       --data_dir data/processed/isic2019 --split val ...
+
+⑤ 결과 기록 → skinai_docs/realtest_results.md
+⑥ part6 혼합 학습 완료 후 ③④ 재실행 → 도메인 갭 개선폭 비교
 ```
 
 ---
 
-## 10. 후속 작업
+## 6. 결과 저장 구조
 
-- 각 Phase 결과는 [skinai_docs/realtest_results_DS14.md](realtest_results_DS14.md)에 누적 기록
-- 합격 시 → LLM 리포트 워크플로우([llm_api_research.md](llm_api_research.md)) 통합 테스트로 진행
-- 도메인 갭이 크게 발생한 경우 → 외부 데이터로 fine-tuning 검토 또는 학습 데이터 보강 논의
-- 추후 dataset_15(피부측정 데이터) 도입 시 본 기획안을 템플릿으로 재사용
+```
+ai/results/
+├── DS14/realtest/dermnet/
+│   ├── eval_metrics.json      # Top-1, F1, Per-class P/R/F1
+│   ├── confusion_matrix.png
+│   └── roc_curves.png
+└── DS15/realtest/isic2019/
+    ├── eval_metrics.json
+    ├── confusion_matrix.png
+    └── roc_curves.png
+```
+
+---
+
+## 7. 이슈 및 대응
+
+| 이슈 | 대응 |
+|------|------|
+| DermNet test.csv의 image_path가 절대경로 | `--root_dir` 불필요 (로컬 실행 시 절대경로 그대로 유효). Drive 이동 후엔 CSV 재생성 |
+| ISIC 2019 NV 클래스 과잉(12,875장) | `--max_per_class 3000` 다운샘플로 편향 완화 |
+| DS15 7종(보웬병·흑색점·사마귀 등) ISIC 미포함 | 해당 클래스는 4-B에서 평가 불가. AI Hub 합성 val로만 측정 |
+| DS14에 악성 클래스 없음 | 4-A는 도메인 갭만 측정. 임상 안전성은 DS15로 평가 |
+| 도메인 갭이 합격 기준 미달 | part6 혼합 학습 결과를 기다려 재측정 — fine-tuning 효과 정량화에 사용 |
+| DS15 val Top-1 99.93% — AI Hub 큐레이션 val 과대평가 | 4-B ISIC 평가로 실제 도메인 갭 정량화. test split 재학습(part6) 후 독립 test 세트로 재측정 |
+| DS15 holdout test 세트 없음 | train.csv 전부 학습에 사용. 재학습 전 3-way split 필요 (part6 §6 순위 1번) |
+| evaluate.py DS15 로컬 실행 시 data_dir 불일치 | 학습 기록 data_dir `data/processed_15` (Colab) ≠ 로컬 `data/processed/DS15`. 반드시 `--data_dir data/processed/DS15` 명시 |
+
+---
+
+## 8. 후속 연계
+
+- 4-A·4-B 결과를 [part6_training_plan.md](part6_training_plan.md) Phase 3·4 완료 후 재측정 → 혼합 학습 효과 비교
+- 결과 누적: [skinai_docs/realtest_results.md](realtest_results.md) (Phase 실행 후 신규 작성)
 
 ---
 
 ## 참고
 
-- 학습 결과: [ai/results/DS14/training_log.json](../ai/results/DS14/training_log.json)
-- 학습 보고서: [ai/results/DS14/DS14_report.md](../ai/results/DS14/DS14_report.md)
-- LLM 연동 기획: [skinai_docs/llm_api_research.md](llm_api_research.md)
-- 코딩 규칙: [CLAUDE.md](../CLAUDE.md)
+- DS15 클래스 인덱스 매핑: [ai/preprocessing/ds15_class_idx_map.json](../ai/preprocessing/ds15_class_idx_map.json)
+- ISIC 2019 레이블 매핑: [ai/preprocessing/isic2019_class_map.json](../ai/preprocessing/isic2019_class_map.json)
+- 혼합 학습 기획: [part6_training_plan.md](part6_training_plan.md)
+- 학습 결과 (DS14): [ai/results/DS14/training_log.json](../ai/results/DS14/training_log.json)

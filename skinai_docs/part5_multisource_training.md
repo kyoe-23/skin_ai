@@ -290,12 +290,12 @@ DS14/DS15 모두 공유 backbone으로 사용 가능 → 장기적으로 멀티�
 | 파일 | 대상 | 역할 |
 |------|------|------|
 | `ai/training/classifier/model.py` (수정) | 공통 | `build_dinov2_classifier()` 추가 |
-| `ai/training/classifier/config_15.py` (신규) | DS15 | FocalLoss 설정, 악성 클래스 가중치 |
-| `ai/training/classifier/train_15.py` (신규) | DS15 | FocalLoss + Recall 기준 best 저장 |
-| `ai/preprocessing/aihub_preprocessor_15.py` (신규) | DS15 | DS15 ZIP 파싱 (방향 없음), 15종 CSV 생성 |
 
-수정하지 않는 파일:
-- `ai/inference/app.py` — MODEL_PATH 환경변수 교체만 필요
+> `config_15.py`, `train_15.py`: 별도 작성 불필요 — 기존 `train.py`의 `--data_dir`/`--num_classes` + `load_from_metadata()`로 DS15 완료 ✅  
+> `aihub_preprocessor_15.py`: 불필요 — DS15는 기존 `aihub_preprocessor.py` 동일 파이프라인으로 처리 완료 ✅
+
+수정이 필요한 파일:
+- `ai/inference/app.py` — `NUM_CLASSES=6` 하드코딩 (DS15 로드 불가), CORS 하드코딩 → 환경변수화 필요
 - `ai/testing/threshold_opt.py` — 재사용 가능
 
 ---

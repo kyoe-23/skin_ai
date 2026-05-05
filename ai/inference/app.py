@@ -38,16 +38,17 @@ logger = logging.getLogger(__name__)
 
 # ── Flask 앱 초기화 ──────────────────────────────────────────────
 app = Flask(__name__)
+_origins_raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+_allowed_origins = [o.strip() for o in _origins_raw.split(",") if o.strip()]
 CORS(app, resources={
     r"/*": {
-        "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
+        "origins": _allowed_origins,
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
     }
 })
 
 # ── 상수 ─────────────────────────────────────────────────────────
-NUM_CLASSES = 6
 MAX_FILE_SIZE_MB = 10
 MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
 MIN_IMAGE_SIZE = 100          # 최소 해상도 (픽셀)
@@ -55,9 +56,11 @@ INFER_RESIZE = 256            # 추론 전처리 resize
 INFER_CROP = 224              # 추론 전처리 center crop
 TOP_K = 3                     # 상위 예측 반환 수
 
-CLASS_NAMES = ["건선", "아토피피부염", "여드름", "주사", "지루피부염", "정상"]
-CLASS_MAP = {name: idx for idx, name in enumerate(CLASS_NAMES)}
-IDX_TO_CLASS = {idx: name for idx, name in enumerate(CLASS_NAMES)}
+# DS14 기본값 — _load_model()에서 체크포인트 config로 덮어씀
+_DEFAULT_CLASS_NAMES = ["건선", "아토피피부염", "여드름", "주사", "지루피부염", "정상"]
+CLASS_NAMES: list = list(_DEFAULT_CLASS_NAMES)
+CLASS_MAP: dict = {name: idx for idx, name in enumerate(CLASS_NAMES)}
+IDX_TO_CLASS: dict = {idx: name for idx, name in enumerate(CLASS_NAMES)}
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
@@ -119,21 +122,23 @@ def _build_model_from_checkpoint(backbone: str, checkpoint: dict) -> nn.Module:
     Raises:
         ValueError: 지원하지 않는 backbone일 경우
     """
-    dropout = checkpoint.get("config", {}).get("dropout_rate", 0.5)
+    ckpt_cfg = checkpoint.get("config", {})
+    num_classes = ckpt_cfg.get("num_classes", len(_DEFAULT_CLASS_NAMES))
+    dropout = ckpt_cfg.get("dropout_rate", 0.5)
 
     if backbone == "densenet121":
         built_model = models.densenet121(weights=None)
         in_features = built_model.classifier.in_features
         built_model.classifier = nn.Sequential(
             nn.Dropout(dropout),
-            nn.Linear(in_features, NUM_CLASSES),
+            nn.Linear(in_features, num_classes),
         )
     elif backbone == "efficientnet_b3":
         built_model = models.efficientnet_b3(weights=None)
         in_features = built_model.classifier[-1].in_features
         built_model.classifier = nn.Sequential(
             nn.Dropout(dropout),
-            nn.Linear(in_features, NUM_CLASSES),
+            nn.Linear(in_features, num_classes),
         )
     else:
         raise ValueError(f"지원하지 않는 backbone: {backbone}. 허용: {SUPPORTED_BACKBONES}")
@@ -230,6 +235,7 @@ def _build_clinical_ref(df: pd.DataFrame) -> dict:
 def _load_model():
     """모델·임계값·임상 참고정보를 서버 시작 시 1회 로드."""
     global _model, _device, _thresholds, _clinical_ref, _backbone
+    global CLASS_NAMES, CLASS_MAP, IDX_TO_CLASS
 
     _device = _get_device()
     model_path = os.environ.get("MODEL_PATH", "ai/results/best.pth")
@@ -243,6 +249,16 @@ def _load_model():
     except (FileNotFoundError, RuntimeError) as e:
         logger.error(f"[ERROR] 체크포인트 로드 실패: error={e}")
         raise
+
+    # 체크포인트 config에서 클래스 정보 복원
+    ckpt_cfg = checkpoint.get("config", {})
+    ckpt_class_names = ckpt_cfg.get("class_names", _DEFAULT_CLASS_NAMES)
+    CLASS_NAMES[:] = ckpt_class_names
+    CLASS_MAP.clear()
+    CLASS_MAP.update({name: idx for idx, name in enumerate(CLASS_NAMES)})
+    IDX_TO_CLASS.clear()
+    IDX_TO_CLASS.update({idx: name for idx, name in enumerate(CLASS_NAMES)})
+    logger.info(f"[INFO] 클래스 {len(CLASS_NAMES)}종 로드: {CLASS_NAMES}")
 
     _model = _build_model_from_checkpoint(_backbone, checkpoint)
     _model = _model.to(_device)
@@ -362,7 +378,7 @@ def health():
     return jsonify({
         "status": "ok",
         "model": _backbone or "not_loaded",
-        "classes": NUM_CLASSES,
+        "classes": len(CLASS_NAMES),
     })
 
 
