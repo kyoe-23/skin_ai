@@ -10,7 +10,7 @@ import logging
 import torch.nn as nn
 from torchvision import models
 
-from .config import ClassifyConfig, SegmentConfig, NUM_CLASSES, SEG_NUM_CLASSES
+from .config import ClassifyConfig, SegmentConfig, SEG_NUM_CLASSES
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def build_classifier(config: ClassifyConfig) -> nn.Module:
         in_features = model.classifier.in_features
         model.classifier = nn.Sequential(
             nn.Dropout(config.dropout_rate),
-            nn.Linear(in_features, NUM_CLASSES),
+            nn.Linear(in_features, config.num_classes),
         )
 
     elif config.backbone == "efficientnet_b3":
@@ -39,7 +39,7 @@ def build_classifier(config: ClassifyConfig) -> nn.Module:
         in_features = model.classifier[-1].in_features
         model.classifier = nn.Sequential(
             nn.Dropout(config.dropout_rate),
-            nn.Linear(in_features, NUM_CLASSES),
+            nn.Linear(in_features, config.num_classes),
         )
 
     else:
