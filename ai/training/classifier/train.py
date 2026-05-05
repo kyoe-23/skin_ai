@@ -1,14 +1,15 @@
-"""AI Hub 08-14 분류 모델 학습.
+"""피부질환 분류 모델 학습 (DenseNet121 / EfficientNet-B3).
 
-기획안 Section 4 기반: Full Fine-Tuning (DenseNet121 / EfficientNet-B3)
+DS14(6종)·DS15(15종) 등 데이터셋에 무관하게 공용으로 사용.
 - Warmup(N에폭) + CosineAnnealingLR
-- Early Stopping (patience=10)
+- Early Stopping
 - 체크포인트: best.pth, epoch_N.pth (매 5에폭), training_log.json
 
 사용법:
     python -m ai.training.classifier.train
     python -m ai.training.classifier.train --backbone efficientnet_b3
     python -m ai.training.classifier.train --resume ai/results/best.pth
+    python -m ai.training.classifier.train --data_dir data/processed/DS15 --num_classes 15
     python -m ai.training.classifier.train --root_dir /content/skin_ai
 """
 
@@ -183,7 +184,7 @@ def _plot_training_curves(history, save_path, target_acc):
 
 def _parse_args():
     """CLI 인자 파싱."""
-    parser = argparse.ArgumentParser(description="AI Hub 분류 모델 학습")
+    parser = argparse.ArgumentParser(description="피부질환 분류 모델 학습")
     parser.add_argument(
         "--backbone", default=None,
         choices=["densenet121", "efficientnet_b3"],
@@ -245,7 +246,7 @@ def main():
     device = get_device()
 
     print("=" * 60)
-    print("AI Hub 분류 모델 학습")
+    print("피부질환 분류 모델 학습")
     print(f"  backbone    : {config.backbone}")
     print(f"  device      : {device}")
     print(f"  epochs      : {config.num_epochs}")
