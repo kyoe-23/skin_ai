@@ -120,12 +120,13 @@ def validate(model, loader, criterion, device):
 
 # ── 체크포인트 ───────────────────────────────────────────────────
 
-def _build_checkpoint(model, optimizer, epoch, best_val_top1, config, history):
+def _build_checkpoint(model, optimizer, scheduler, epoch, best_val_top1, config, history):
     """체크포인트 dict 생성."""
     return {
         "epoch": epoch,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict(),
         "best_val_top1": best_val_top1,
         "config": vars(config),
         "history": history,
@@ -373,6 +374,13 @@ def main():
         start_epoch = checkpoint.get("epoch", 0)
         best_val_top1 = checkpoint.get("best_val_top1", 0.0)
         history = checkpoint.get("history", [])
+        if "scheduler_state_dict" in checkpoint:
+            scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        else:
+            # 이전 체크포인트에 스케줄러 상태 미저장 — num_epochs 기준 fast-forward
+            # 새 T_max(num_epochs - warmup_epochs) 스케줄 상에서 start_epoch 위치로 이동
+            for _ in range(start_epoch):
+                scheduler.step()
         print(f"\n  이어서 학습: epoch {start_epoch}, best_top1={best_val_top1:.4f}")
 
     # ── 저장 디렉토리 ────────────────────────────────────────────
@@ -434,7 +442,7 @@ def main():
             best_val_top1 = val_top1
             no_improve = 0
             ckpt = _build_checkpoint(
-                model, optimizer, epoch_num, best_val_top1, config, history,
+                model, optimizer, scheduler, epoch_num, best_val_top1, config, history,
             )
             _save_checkpoint(ckpt, ckpt_dir / "best.pth")
             print(f"{'':>20s}Best 모델 저장 (Top-1: {best_val_top1 * 100:.2f}%)")
@@ -444,7 +452,7 @@ def main():
         # ── 주기적 체크포인트 (매 save_every_n_epochs) ───────────
         if epoch_num % config.save_every_n_epochs == 0:
             ckpt = _build_checkpoint(
-                model, optimizer, epoch_num, best_val_top1, config, history,
+                model, optimizer, scheduler, epoch_num, best_val_top1, config, history,
             )
             _save_checkpoint(ckpt, ckpt_dir / f"epoch_{epoch_num}.pth")
 
