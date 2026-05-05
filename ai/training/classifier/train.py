@@ -192,6 +192,8 @@ def _parse_args():
     parser.add_argument("--num_epochs", type=int, default=None)
     parser.add_argument("--batch_size", type=int, default=None)
     parser.add_argument("--learning_rate", type=float, default=None)
+    parser.add_argument("--data_dir", default=None, help="데이터셋 CSV 경로 (기본: config 값)")
+    parser.add_argument("--num_classes", type=int, default=None, help="클래스 수 (기본: metadata.json 자동 감지)")
     parser.add_argument("--resume", default=None, help="체크포인트 경로 (학습 재개)")
     parser.add_argument(
         "--root_dir", default=None,
@@ -221,6 +223,10 @@ def _apply_cli_overrides(config, args):
         config.batch_size = args.batch_size
     if args.learning_rate is not None:
         config.learning_rate = args.learning_rate
+    if args.data_dir is not None:
+        config.data_dir = args.data_dir
+    if args.num_classes is not None:
+        config.num_classes = args.num_classes
 
 
 # ── 메인 학습 루프 ───────────────────────────────────────────────
@@ -228,21 +234,26 @@ def _apply_cli_overrides(config, args):
 def main():
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
+    started_at = datetime.now().isoformat()
+
     args = _parse_args()
     config = ClassifyConfig()
     _apply_cli_overrides(config, args)
+    config.load_from_metadata()   # data_dir/metadata.json → num_classes, class_names 자동 설정
 
     device = get_device()
 
     print("=" * 60)
-    print("AI Hub 08-14 분류 모델 학습")
-    print(f"  backbone : {config.backbone}")
-    print(f"  device   : {device}")
-    print(f"  epochs   : {config.num_epochs}")
-    print(f"  batch    : {config.batch_size}")
-    print(f"  lr       : {config.learning_rate}")
-    print(f"  warmup   : {config.warmup_epochs} epochs")
-    print(f"  scheduler: CosineAnnealingLR (T_max={config.num_epochs - config.warmup_epochs})")
+    print("AI Hub 분류 모델 학습")
+    print(f"  backbone    : {config.backbone}")
+    print(f"  device      : {device}")
+    print(f"  epochs      : {config.num_epochs}")
+    print(f"  batch       : {config.batch_size}")
+    print(f"  lr          : {config.learning_rate}")
+    print(f"  warmup      : {config.warmup_epochs} epochs")
+    print(f"  scheduler   : CosineAnnealingLR (T_max={config.num_epochs - config.warmup_epochs})")
+    print(f"  num_classes : {config.num_classes}")
+    print(f"  data_dir    : {config.data_dir}")
     print("=" * 60)
 
     # ── 데이터 로드 ──────────────────────────────────────────────
@@ -290,7 +301,7 @@ def main():
     log_model_info(model)
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+    criterion = nn.CrossEntropyLoss(label_smoothing=config.label_smoothing)
     optimizer = torch.optim.Adam(
         model.parameters(),
         lr=config.learning_rate,
@@ -413,7 +424,7 @@ def main():
         "target_achieved": best_val_top1 >= config.target_top1_acc,
         "guideline_target": config.target_top1_acc,
         "device": str(device),
-        "started_at": datetime.now().isoformat(),
+        "started_at": started_at,
         "history": history,
     }
 

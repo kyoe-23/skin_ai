@@ -4,9 +4,11 @@ AI Hub 08-14 활용 가이드라인(서울대학교 산학협력단, 2025.01) �
 모든 설정값은 환경변수로 오버라이드 가능.
 """
 
+import json
 import os
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 def _env_int(key: str, default: int) -> int:
@@ -57,7 +59,7 @@ class ClassifyConfig:
 
     # ── 데이터 ──────────────────────────────────────────────────
     data_dir: str = field(default_factory=lambda: _env_str("DATA_DIR", "data/processed/DS14"))
-    num_classes: int = NUM_CLASSES
+    num_classes: int = field(default_factory=lambda: _env_int("NUM_CLASSES", NUM_CLASSES))
     class_names: list = field(default_factory=lambda: list(CLASS_NAMES))
 
     # ── 모델 ────────────────────────────────────────────────────
@@ -89,9 +91,30 @@ class ClassifyConfig:
     log_dir: str = field(default_factory=lambda: _env_str("LOG_DIR", "ai/logs/aihub"))
     experiment_name: str = field(default_factory=lambda: _env_str("EXPERIMENT_NAME", "densenet121_baseline"))
 
+    # ── 손실 함수 ────────────────────────────────────────────────
+    label_smoothing: float = field(default_factory=lambda: _env_float("LABEL_SMOOTHING", 0.1))
+
     # ── 성능 목표 ────────────────────────────────────────────────
     target_top1_acc: float = 0.80
     stretch_top1_acc: float = 0.85
+
+    def load_from_metadata(self) -> None:
+        """data_dir/metadata.json에서 num_classes, class_names를 자동 로드.
+
+        DS14(6클래스), DS15(15클래스) 등 어떤 데이터셋이든
+        metadata.json만 있으면 클래스 수와 이름이 자동으로 설정됨.
+        """
+        meta_path = Path(self.data_dir) / "metadata.json"
+        if not meta_path.exists():
+            return
+        with open(meta_path, encoding="utf-8") as f:
+            meta = json.load(f)
+        if "num_classes" in meta:
+            self.num_classes = meta["num_classes"]
+        if "class_map" in meta:
+            self.class_names = sorted(
+                meta["class_map"], key=lambda k: meta["class_map"][k]
+            )
 
     def apply_backbone_defaults(self) -> None:
         """backbone에 따라 image_size, crop_size, batch_size, lr, warmup을 자동 설정.

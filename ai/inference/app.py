@@ -16,6 +16,7 @@ import time
 import traceback
 from pathlib import Path
 from typing import Optional, Tuple
+from llm_service import generate_report
 
 # ── 서드파티 ─────────────────────────────────────────────────────
 import numpy as np
@@ -28,6 +29,7 @@ from PIL import Image, UnidentifiedImageError
 from torchvision import models, transforms
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 # ── 로거 설정 ────────────────────────────────────────────────────
@@ -36,13 +38,9 @@ logger = logging.getLogger(__name__)
 
 # ── Flask 앱 초기화 ──────────────────────────────────────────────
 app = Flask(__name__)
-
-_origins_env = os.environ.get("ALLOWED_ORIGINS", "")
-_allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()] if _origins_env else ["*"]
-
 CORS(app, resources={
     r"/*": {
-        "origins": _allowed_origins,
+        "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
     }
@@ -430,6 +428,7 @@ def predict():
 
         gradcam_b64 = _generate_gradcam(image, input_tensor)
         clinical_ref = _clinical_ref.get(pred_class) if _clinical_ref else None
+        report_obj = generate_report(prediction, clinical_ref)
         elapsed_ms = round((time.time() - start_time) * 1000)
 
         return jsonify({
@@ -437,6 +436,7 @@ def predict():
             "prediction": prediction,
             "gradcam": gradcam_b64,
             "clinical_ref": clinical_ref,
+            "report": report_obj,
             "processing_time_ms": elapsed_ms,
         })
 
