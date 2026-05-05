@@ -177,9 +177,14 @@ def main():
     ckpt_config = checkpoint.get("config", {})
 
     config = ClassifyConfig()
-    config.backbone = ckpt_config.get("backbone", config.backbone)
-    if args.data_dir:
-        config.data_dir = args.data_dir
+    config.backbone    = ckpt_config.get("backbone", config.backbone)
+    config.num_classes = ckpt_config.get("num_classes", config.num_classes)
+    config.data_dir    = args.data_dir or ckpt_config.get("data_dir", config.data_dir)
+    # class_names: 체크포인트 config 우선 — 외부 데이터 평가 시 metadata 덮어쓰기 방지
+    if "class_names" in ckpt_config:
+        config.class_names = list(ckpt_config["class_names"])
+    else:
+        config.load_from_metadata()
 
     model = build_classifier(config)
     model.load_state_dict(checkpoint["model_state_dict"])
@@ -232,9 +237,14 @@ def main():
     top3_acc = top3_correct / len(all_labels)
 
     # ── Classification Report ────────────────────────────────────
-    report = classification_report(labels_np, preds_np, target_names=class_names, output_dict=True)
-    macro_f1 = f1_score(labels_np, preds_np, average="macro")
-    weighted_f1 = f1_score(labels_np, preds_np, average="weighted")
+    all_label_indices = list(range(len(class_names)))
+    report = classification_report(
+        labels_np, preds_np,
+        labels=all_label_indices, target_names=class_names,
+        output_dict=True, zero_division=0,
+    )
+    macro_f1 = f1_score(labels_np, preds_np, average="macro", labels=all_label_indices, zero_division=0)
+    weighted_f1 = f1_score(labels_np, preds_np, average="weighted", labels=all_label_indices, zero_division=0)
 
     # ── AUC ──────────────────────────────────────────────────────
     try:
@@ -274,7 +284,7 @@ def main():
     print("=" * 60)
 
     # ── Confusion Matrix ─────────────────────────────────────────
-    cm = confusion_matrix(labels_np, preds_np)
+    cm = confusion_matrix(labels_np, preds_np, labels=all_label_indices)
     _plot_confusion_matrix(cm, class_names, str(output_dir / "confusion_matrix.png"))
     print(f"-> confusion_matrix.png 저장")
 
