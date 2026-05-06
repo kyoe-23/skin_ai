@@ -121,13 +121,13 @@ python -m ai.preprocessing.external_preprocessor \
     --output_dir data/processed/isic2019 \
     --val_ratio 0.15 \
     --source isic2019 \
-    --class_map_file ai/preprocessing/isic2019_class_map.json \
-    --class_idx_map_file ai/preprocessing/ds15_class_idx_map.json \
+    --class_map_file ai/preprocessing/class_maps/isic2019_class_map.json \
+    --class_idx_map_file ai/preprocessing/class_maps/unified_class_idx_map.json \
     --flat \
     --max_per_class 3000   # NV 12,875장 → 3,000장 다운샘플
 ```
 
-완료된 파일: `ai/preprocessing/isic2019_class_map.json` ✅, `ai/preprocessing/ds15_class_idx_map.json` ✅
+완료된 파일: `ai/preprocessing/class_maps/isic2019_class_map.json` ✅, `ai/preprocessing/class_maps/ds15_class_idx_map.json` ✅
 
 **NV 다운샘플 후 예상 분포:**
 
@@ -198,8 +198,8 @@ checkpoint: ai/results/DS14/mixed_dermnet/
 
 | 파일 | Phase | 내용 | 상태 |
 |------|-------|------|------|
-| `ai/preprocessing/isic2019_class_map.json` | 2 | ISIC 레이블 → DS15 클래스 매핑 | ✅ 완료 |
-| `ai/preprocessing/ds15_class_idx_map.json` | 2 | DS15 클래스 → 인덱스 매핑 | ✅ 완료 |
+| `ai/preprocessing/class_maps/isic2019_class_map.json` | 2 | ISIC 레이블 → 클래스 매핑 | ✅ 완료 |
+| `ai/preprocessing/class_maps/ds15_class_idx_map.json` | 2 | DS15 클래스 → 인덱스 매핑 | ✅ 완료 |
 | `ai/preprocessing/external_preprocessor.py` 수정 | 2 | `--flat`, `--max_per_class`, `--class_idx_map_file` 추가 | ✅ 완료 |
 | `ai/training/classifier/train.py` 수정 | 4 | `ExternalFacialDataset`에 `root_dir=args.root_dir` 전달 | ✅ 완료 |
 
@@ -227,7 +227,7 @@ checkpoint: ai/results/DS14/mixed_dermnet/
 | 순위 | 항목 | 상태 | 선행 조건 |
 |------|------|------|----------|
 | — | DS15 baseline 학습 (Phase 1) | 🟢 완료 (val Top-1 99.93%, epoch 95) | — |
-| — | `external_preprocessor.py --flat` + `isic2019_class_map.json` + `ds15_class_idx_map.json` | 🟢 완료 | — |
+| — | `external_preprocessor.py --flat` + `class_maps/isic2019_class_map.json` + `class_maps/unified_class_idx_map.json` | 🟢 완료 | — |
 | — | `train_mixed.ipynb` `EXTRA_DATA_DIR` 경로 수정 | 🟢 완료 | — |
 | 1 | DS15 test split 재학습 (3-way split, 640/80/80 per class) | 🟡 권고 | `split_dataset.py` 작성 필요 |
 | 2 | ISIC 2019 Drive 업로드 완료 후 전처리 (Phase 2) | 🟡 Drive 업로드 대기 | Drive 업로드 완료 |

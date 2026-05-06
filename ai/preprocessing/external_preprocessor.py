@@ -1,4 +1,4 @@
-"""외부 임상 이미지 전처리 — DermNet NZ / ISIC 2019 디렉토리 → CSV 생성.
+"""외부 임상 이미지 전처리 — DermNet NZ / ISIC 2019 / HAM10000 → CSV 생성.
 
 지원 디렉토리 구조
 ------------------
@@ -8,6 +8,10 @@ DermNet (기본):
 
 ISIC 2019 (--flat 옵션):
     {root_dir}/{LABEL}/*.jpg          → train + val 분리 (test 없음)
+
+HAM10000 (--metadata_csv 옵션):
+    {root_dir}/**/*.jpg               → 전체 스캔 후 CSV 레이블 매칭
+    metadata_csv: image_id, dx 컬럼을 가진 CSV
 
 사용법:
     # DermNet
@@ -21,9 +25,19 @@ ISIC 2019 (--flat 옵션):
         --root_dir "data/ISIC 2019" \
         --output_dir data/processed/isic2019 \
         --source isic2019 \
-        --class_map_file ai/preprocessing/isic2019_class_map.json \
-        --class_idx_map_file ai/preprocessing/ds15_class_idx_map.json \
+        --class_map_file ai/preprocessing/class_maps/isic2019_class_map.json \
+        --class_idx_map_file ai/preprocessing/class_maps/unified_class_idx_map.json \
         --flat \
+        --max_per_class 3000
+
+    # HAM10000
+    python -m ai.preprocessing.external_preprocessor \
+        --root_dir data/HAM10000 \
+        --output_dir data/processed/ham10000 \
+        --source ham10000 \
+        --class_map_file ai/preprocessing/class_maps/ham10000_class_map.json \
+        --class_idx_map_file ai/preprocessing/class_maps/unified_class_idx_map.json \
+        --metadata_csv data/HAM10000/HAM10000_metadata.csv \
         --max_per_class 3000
 
 출력 CSV 컬럼:
@@ -249,6 +263,81 @@ def _scan_flat_dir(
     return records
 
 
+def _scan_csv_metadata(
+    root_dir: Path,
+    metadata_csv: str,
+    class_map: dict[str, str | None],
+    class_idx_map: dict[str, int],
+    source: str,
+    max_per_class: int | None,
+) -> list[dict]:
+    """CSV 메타데이터 기반 스캔 (HAM10000 등).
+
+    이미지 파일이 여러 서브디렉토리에 혼재할 때 사용.
+    root_dir 하위 전체 이미지를 image_id(파일명 확장자 제외)로 인덱싱 후
+    metadata CSV의 레이블과 매칭한다.
+
+    Args:
+        root_dir: 이미지가 존재하는 루트 디렉토리 (재귀 탐색)
+        metadata_csv: image_id·dx 컬럼을 가진 CSV 경로
+        class_map: dx코드 → 클래스명 매핑 (None이면 제외)
+        class_idx_map: 클래스명 → 인덱스 매핑
+        source: 데이터 출처 이름
+        max_per_class: 클래스당 최대 샘플 수
+    """
+    logger.info(f"[INFO] 이미지 인덱싱 중: {root_dir}")
+    img_index: dict[str, Path] = {}
+    for img_path in root_dir.rglob("*"):
+        if img_path.suffix.lower() in VALID_EXTENSIONS:
+            img_index[img_path.stem] = img_path
+    logger.info(f"[INFO] 인덱싱 완료: {len(img_index)}개 이미지")
+
+    try:
+        meta_df = pd.read_csv(metadata_csv)
+    except (OSError, pd.errors.ParserError) as e:
+        raise ValueError(f"metadata_csv 로드 실패: {e}") from e
+
+    if "image_id" not in meta_df.columns or "dx" not in meta_df.columns:
+        raise ValueError(f"metadata_csv에 image_id, dx 컬럼이 필요합니다: {list(meta_df.columns)}")
+
+    rng = random.Random(RANDOM_STATE)
+    records_by_class: dict[str, list[dict]] = {}
+
+    for _, row in meta_df.iterrows():
+        image_id = str(row["image_id"])
+        dx_code = str(row["dx"])
+
+        class_name = class_map.get(dx_code)
+        if class_name is None:
+            continue
+
+        class_idx = class_idx_map.get(class_name)
+        if class_idx is None:
+            logger.warning(f"[WARNING] 인덱스 맵에 없는 클래스: {class_name} (dx: {dx_code})")
+            continue
+
+        img_path = img_index.get(image_id)
+        if img_path is None:
+            logger.warning(f"[WARNING] 이미지 없음: {image_id}")
+            continue
+
+        records_by_class.setdefault(class_name, []).append({
+            "image_path": _to_relative_path(img_path),
+            "class_name": class_name,
+            "class_idx": class_idx,
+            "source": source,
+        })
+
+    records: list[dict] = []
+    for class_name, class_records in records_by_class.items():
+        if max_per_class is not None and len(class_records) > max_per_class:
+            class_records = rng.sample(class_records, max_per_class)
+            logger.info(f"[INFO] 다운샘플: {class_name} → {max_per_class}장")
+        records.extend(class_records)
+
+    return records
+
+
 def _split_train_val(df: pd.DataFrame, val_ratio: float) -> tuple[pd.DataFrame, pd.DataFrame]:
     """클래스별 stratified split으로 train/val 분리."""
     train_df, val_df = train_test_split(
@@ -312,6 +401,8 @@ def main() -> None:
                         help="클래스명 → 인덱스 JSON (기본: DS14 6종 CLASS_IDX_MAP_6)")
     parser.add_argument("--flat", action="store_true",
                         help="flat 구조 모드 — train/test 서브디렉토리 없이 {root_dir}/{LABEL}/ 직접 스캔 (ISIC 2019)")
+    parser.add_argument("--metadata_csv", default=None,
+                        help="CSV 메타데이터 경로 (HAM10000 등 — image_id, dx 컬럼 필요). 지정 시 flat/split 모드 무시.")
     parser.add_argument("--max_per_class", type=int, default=None,
                         help="클래스당 최대 샘플 수 (다운샘플, 기본: 제한 없음)")
     args = parser.parse_args()
@@ -325,16 +416,32 @@ def main() -> None:
     class_map = _load_class_map(args.class_map_file)
     class_idx_map = _load_class_idx_map(args.class_idx_map_file)
 
+    mode = "metadata_csv" if args.metadata_csv else ("flat" if args.flat else "split")
     print("=" * 60)
-    print(f"외부 데이터셋 전처리 ({'flat' if args.flat else 'split'} 모드)")
+    print(f"외부 데이터셋 전처리 ({mode} 모드)")
     print(f"  root_dir       : {root_dir}")
     print(f"  output_dir     : {output_dir}")
     print(f"  val_ratio      : {args.val_ratio}")
     print(f"  source         : {args.source}")
     print(f"  max_per_class  : {args.max_per_class or '제한 없음'}")
+    if args.metadata_csv:
+        print(f"  metadata_csv   : {args.metadata_csv}")
     print("=" * 60)
 
-    if args.flat:
+    if args.metadata_csv:
+        # HAM10000 등 CSV 레이블 기반 스캔
+        all_records = _scan_csv_metadata(
+            root_dir, args.metadata_csv, class_map, class_idx_map,
+            args.source, args.max_per_class,
+        )
+        if not all_records:
+            raise RuntimeError(
+                "[ERROR] 매핑된 이미지를 찾지 못했습니다. metadata_csv와 class_map_file을 확인하세요."
+            )
+        all_df = pd.DataFrame(all_records)
+        train_df, val_df = _split_train_val(all_df, args.val_ratio)
+        test_df = pd.DataFrame()
+    elif args.flat:
         # ISIC 2019 등 flat 구조 — train/test 구분 없이 전체 분리
         all_records = _scan_flat_dir(
             root_dir, class_map, class_idx_map, args.source, args.max_per_class

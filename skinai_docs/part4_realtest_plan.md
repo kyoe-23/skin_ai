@@ -73,8 +73,8 @@ python -m ai.preprocessing.external_preprocessor \
     --root_dir "data/ISIC 2019" \
     --output_dir data/processed/isic2019 \
     --source isic2019 \
-    --class_map_file ai/preprocessing/isic2019_class_map.json \
-    --class_idx_map_file ai/preprocessing/ds15_class_idx_map.json \
+    --class_map_file ai/preprocessing/class_maps/isic2019_class_map.json \
+    --class_idx_map_file ai/preprocessing/class_maps/unified_class_idx_map.json \
     --flat \
     --max_per_class 3000
 ```
@@ -206,7 +206,7 @@ ai/results/
 
 ## 참고
 
-- DS15 클래스 인덱스 매핑: [ai/preprocessing/ds15_class_idx_map.json](../ai/preprocessing/ds15_class_idx_map.json)
-- ISIC 2019 레이블 매핑: [ai/preprocessing/isic2019_class_map.json](../ai/preprocessing/isic2019_class_map.json)
+- DS15 클래스 인덱스 매핑: [ai/preprocessing/class_maps/ds15_class_idx_map.json](../ai/preprocessing/class_maps/ds15_class_idx_map.json)
+- ISIC 2019 레이블 매핑: [ai/preprocessing/class_maps/isic2019_class_map.json](../ai/preprocessing/class_maps/isic2019_class_map.json)
 - 혼합 학습 기획: [part6_training_plan.md](part6_training_plan.md)
 - 학습 결과 (DS14): [ai/results/DS14/training_log.json](../ai/results/DS14/training_log.json)
