@@ -167,13 +167,25 @@ HAM10000 (10,015장, 7종)은 ISIC 2019와 클래스가 완전히 겹친다.
 
 ### 4.2 데이터 구성
 
+**unified 3-way split (DS14+DS15 통합)**
+
+| split | 장수 | 비고 |
+|-------|-----:|------|
+| train.csv | 10,080 | 학습 전용 |
+| val.csv | 1,400 | best epoch 선택용 (학습 중 참조) |
+| test.csv | 1,120 | **홀드아웃 — 학습 중 미사용, 최종 평가 전용** |
+
+> test.csv는 train 10%를 클래스별 층화 추출(`--test_ratio 0.1`, seed=42)로 분리했다.
+
+**소스별 학습 데이터**
+
 | 소스 | 장수 | 클래스 | weight |
 |------|------|--------|--------|
-| AI Hub DS14 | ~5,760 (3종 × 1,920) | 건선·아토피·여드름 | 1.0 |
-| AI Hub DS15 | ~6,400 (8종 × 800) | ISIC 매핑 8종 | 1.0 |
+| AI Hub DS14 | 4,320 (3종 × 1,440) | 건선·아토피·여드름 | 1.0 |
+| AI Hub DS15 | 5,760 (8종 × 720) | ISIC 매핑 8종 | 1.0 |
 | DermNet NZ | ~3,000 | 건선·아토피·여드름 | 1.5 |
 | ISIC 2019 | ~11,569 (8종) | ISIC 매핑 8종 | 1.5 |
-| HAM10000 | ~10,015 (7종, max 3,000/class) | ISIC 매핑 7종 (SCC 제외) | 1.5 |
+| HAM10000 | ~5,363 (7종, max 3,000/class) | ISIC 매핑 7종 (SCC 제외) | 1.5 |
 
 ### 4.3 학습 설정
 
@@ -194,12 +206,14 @@ HAM10000 (10,015장, 7종)은 ISIC 2019와 클래스가 완전히 겹친다.
 ### 4.4 데이터 준비 명령어
 
 ```bash
-# 1단계: 통합 CSV 생성 (DS14 + DS15 필터링·재인덱싱)
+# 1단계: 통합 CSV 생성 (DS14 + DS15 필터링·재인덱싱 + 3-way split)
+# test_ratio=0.1 → train 10%를 클래스별 층화 추출해 test.csv로 분리
 python -m ai.dataset.build_unified_dataset \
     --ds14_dir data/processed/DS14 \
     --ds15_dir data/processed/DS15 \
     --class_map ai/preprocessing/class_maps/unified_class_idx_map.json \
-    --output_dir data/processed/unified
+    --output_dir data/processed/unified \
+    --test_ratio 0.1
 
 # 2단계: HAM10000 전처리 (unified idx 기준)
 python -m ai.preprocessing.external_preprocessor \
@@ -227,12 +241,19 @@ python -m ai.training.classifier.train \
 ### 4.6 평가 계획
 
 ```bash
-# AI Hub unified val (DS14 + DS15 11종)
+# unified val (DS14 + DS15 11종 — best epoch 확인용)
 python -m ai.testing.evaluate \
     --checkpoint ai/results/DS_unified/checkpoint/best.pth \
     --data_dir data/processed/unified \
     --split val \
-    --output_dir ai/results/DS_unified/eval_aihub_val
+    --output_dir ai/results/DS_unified/eval_unified_val
+
+# unified test (train 10% 홀드아웃 — 합성 도메인 진짜 성능)
+python -m ai.testing.evaluate \
+    --checkpoint ai/results/DS_unified/checkpoint/best.pth \
+    --data_dir data/processed/unified \
+    --split test \
+    --output_dir ai/results/DS_unified/eval_unified_test
 
 # DermNet test (건선·아토피·여드름 실사 검증)
 python -m ai.testing.evaluate \
@@ -274,7 +295,7 @@ MODEL_PATH=ai/results/DS_unified/checkpoint/best.pth
 |------|------|------|
 | 1 | `ai/preprocessing/class_maps/unified_class_idx_map.json` 작성 (11종 → 0~10) | 🟢 완료 |
 | 2 | `ai/preprocessing/class_maps/ham10000_class_map.json` 작성 | 🟢 완료 |
-| 3 | `ai/dataset/build_unified_dataset.py` 작성 + `data/processed/unified/` CSV 생성 | 🟢 완료 |
+| 3 | `ai/dataset/build_unified_dataset.py` 작성 + 3-way split CSV 생성 (train 10,080 / val 1,400 / test 1,120) | 🟢 완료 |
 | 4 | HAM10000 전처리 실행 (`external_preprocessor.py --metadata_csv`) | 🟢 완료 |
 | 5 | `train_unified.ipynb` Colab 노트북 작성 (DermNet + ISIC + HAM10000 포함) | 🟢 완료 |
 | 6 | Colab에서 통합 학습 실행 (100 epoch) | 🔴 미완료 |
@@ -288,7 +309,6 @@ MODEL_PATH=ai/results/DS_unified/checkpoint/best.pth
 
 | 항목 | 내용 |
 |------|------|
-| DS15 test split | 12,000장 전체 학습 중 → holdout test 없음. 통합 재학습 시 3-way split 적용 |
 | 편평세포암 추가 데이터 | HAM10000에 SCC 없음 → Derm7pt 또는 추가 ISIC 확보 시 보강 |
 | 미매핑 10종 | 주사·지루피부염·보웬병 등은 HAM10000에도 없음 — DermNet-17 등 다른 소스 필요 |
 | 세그멘테이션 통합 | DeepLabV3+ 아토피 세그멘테이션 모델과 분류 모델 앙상블 검토 |
