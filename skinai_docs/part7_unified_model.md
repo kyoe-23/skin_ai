@@ -276,7 +276,7 @@ MODEL_PATH=ai/results/DS_unified/checkpoint/best.pth
 | 2 | `ai/preprocessing/class_maps/ham10000_class_map.json` 작성 | 🟢 완료 |
 | 3 | `ai/dataset/build_unified_dataset.py` 작성 + `data/processed/unified/` CSV 생성 | 🟢 완료 |
 | 4 | HAM10000 전처리 실행 (`external_preprocessor.py --metadata_csv`) | 🟢 완료 |
-| 5 | `train_unified.ipynb` Colab 노트북 작성 (DermNet + ISIC + HAM10000 포함) | 🔴 미완료 |
+| 5 | `train_unified.ipynb` Colab 노트북 작성 (DermNet + ISIC + HAM10000 포함) | 🟢 완료 |
 | 6 | Colab에서 통합 학습 실행 (100 epoch) | 🔴 미완료 |
 | 7 | 4개 평가 세트로 evaluate.py 실행 | 🔴 미완료 |
 | 8 | Flask .env 업데이트 및 실사 테스트 (11종 × 10~15장) | 🔴 미완료 |
