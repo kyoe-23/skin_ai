@@ -390,10 +390,10 @@ class ExternalFacialDataset(Dataset):
     ):
         df = pd.read_csv(csv_path)
 
-        # 환경별 경로 복원 — root_dir를 prefix로 붙여 절대경로 구성
+        # 환경별 경로 복원 — 절대경로는 _remap_zip_path와 동일하게 'data' 앵커로 재매핑
         if root_dir is not None:
             df["image_path"] = df["image_path"].apply(
-                lambda p: str(Path(root_dir) / p)
+                lambda p: _remap_zip_path(p, root_dir) if Path(p).is_absolute() else str(Path(root_dir) / p)
             )
 
         if "class_idx" not in df.columns:
