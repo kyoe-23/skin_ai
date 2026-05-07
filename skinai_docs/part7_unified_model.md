@@ -207,7 +207,6 @@ HAM10000 (10,015장, 7종)은 ISIC 2019와 클래스가 완전히 겹친다.
 
 ```bash
 # 1단계: 통합 CSV 생성 (DS14 + DS15 필터링·재인덱싱 + 3-way split)
-# test_ratio=0.1 → train 10%를 클래스별 층화 추출해 test.csv로 분리
 python -m ai.dataset.build_unified_dataset \
     --ds14_dir data/processed/DS14 \
     --ds15_dir data/processed/DS15 \
@@ -224,7 +223,46 @@ python -m ai.preprocessing.external_preprocessor \
     --class_idx_map_file ai/preprocessing/class_maps/unified_class_idx_map.json \
     --metadata_csv data/HAM10000/HAM10000_metadata.csv \
     --max_per_class 3000
+
+# 3단계: 외부 이미지 → ZIP 변환 (Drive I/O 병목 해소 — 에폭당 22분 → 1~2분)
+# Google Drive에서 파일 수만 개를 개별 읽는 병목을 ZIP 단일 파일 읽기로 해소
+python -m ai.preprocessing.pack_external_to_zip \
+    --processed_dir data/processed/dermnet \
+    --image_base data/dermnet \
+    --zip_out data/dermnet.zip
+
+python -m ai.preprocessing.pack_external_to_zip \
+    --processed_dir data/processed/isic2019 \
+    --image_base "data/ISIC 2019" \
+    --zip_out data/isic2019.zip
+
+python -m ai.preprocessing.pack_external_to_zip \
+    --processed_dir data/processed/ham10000 \
+    --image_base data/HAM10000 \
+    --zip_out data/ham10000.zip
 ```
+
+**ZIP 변환 결과** (무압축 ZIP_STORED, 1회 실행 완료):
+
+| ZIP 파일 | 이미지 수 | 크기 |
+|---------|------:|----:|
+| `data/dermnet.zip` | 5,065장 | 0.48GB |
+| `data/isic2019.zip` | 13,611장 | 5.63GB |
+| `data/ham10000.zip` | 6,310장 | 1.75GB |
+
+> CSV도 `image_path` → `zip_path` + `filename` 형식으로 자동 재생성됨.
+> `ExternalFacialDataset`이 컬럼을 자동 감지해 ZIP/파일 읽기 방식을 분기하므로 하위 호환 유지.
+
+**Drive 업로드 대상:**
+
+| 항목 | 비고 |
+|------|------|
+| `data/dermnet.zip` | 신규 |
+| `data/isic2019.zip` | 신규 |
+| `data/ham10000.zip` | 신규 |
+| `data/processed/dermnet/` | CSV 재생성 (zip_path 형식) |
+| `data/processed/isic2019/` | CSV 재생성 |
+| `data/processed/ham10000/` | CSV 재생성 |
 
 ### 4.5 학습 명령어 (Colab)
 
@@ -298,8 +336,9 @@ MODEL_PATH=ai/results/DS_unified/checkpoint/best.pth
 | 3 | `ai/dataset/build_unified_dataset.py` 작성 + 3-way split CSV 생성 (train 10,080 / val 1,400 / test 1,120) | 🟢 완료 |
 | 4 | HAM10000 전처리 실행 (`external_preprocessor.py --metadata_csv`) | 🟢 완료 |
 | 5 | `train_unified.ipynb` Colab 노트북 작성 (DermNet + ISIC + HAM10000 포함) | 🟢 완료 |
-| 6 | Colab에서 통합 학습 실행 (100 epoch) | 🔴 미완료 |
-| 7 | 4개 평가 세트로 evaluate.py 실행 | 🔴 미완료 |
+| 5-B | 외부 이미지 ZIP 변환 (`pack_external_to_zip.py`) + `ExternalFacialDataset` ZIP 읽기 지원 추가 | 🟢 완료 |
+| 6 | ZIP + CSV Drive 업로드 후 Colab 통합 학습 실행 (100 epoch) | 🔴 미완료 |
+| 7 | 5개 평가 세트로 evaluate.py 실행 (unified val·test, DermNet, ISIC, HAM10000) | 🔴 미완료 |
 | 8 | Flask .env 업데이트 및 실사 테스트 (11종 × 10~15장) | 🔴 미완료 |
 | 9 | `DS_unified_report.md` 결과 보고서 작성 | 🔴 미완료 |
 

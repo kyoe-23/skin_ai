@@ -363,22 +363,20 @@ class AihubSegDataset(Dataset):
 
 
 class ExternalFacialDataset(Dataset):
-    """파일 시스템 기반 외부 임상 이미지 Dataset.
+    """외부 임상 이미지 Dataset.
 
-    external_preprocessor.py가 생성한 CSV를 읽어 image_path에서
-    직접 이미지를 로드한다. ZIP 없이 파일 경로 직접 접근 방식.
-
-    CSV의 image_path는 프로젝트 루트 기준 상대경로로 저장되어 있으며,
-    root_dir를 지정하면 절대경로로 복원한다.
-    Colab 등 다른 환경에서는 root_dir에 Drive 마운트 경로를 전달한다.
+    CSV 컬럼 포맷을 자동 감지해 두 가지 읽기 방식을 지원한다:
+    - ZIP 모드  : CSV에 zip_path + filename 컬럼이 있을 때
+                 (pack_external_to_zip.py 로 생성, Drive I/O 최적화)
+    - 파일 모드 : CSV에 image_path 컬럼이 있을 때
+                 (external_preprocessor.py 기본 출력, 하위 호환)
 
     Args:
-        csv_path: external_preprocessor가 생성한 CSV 경로
-        transform: torchvision transform (None이면 val 기본 transform)
+        csv_path: external_preprocessor 또는 pack_external_to_zip이 생성한 CSV 경로
+        transform: torchvision transform (None이면 split 기본 transform)
         crop_size: 로드 실패 시 더미 텐서 크기
-        root_dir: image_path 앞에 붙일 프로젝트 루트 경로.
-                  None이면 CSV 저장 경로를 그대로 사용(로컬 실행 시).
-                  Colab에서는 "/content/drive/MyDrive/skin_ai" 등으로 지정.
+        root_dir: Colab 등 다른 환경에서 경로 재매핑할 프로젝트 루트.
+                  None이면 CSV에 저장된 경로를 그대로 사용.
     """
 
     def __init__(
@@ -390,16 +388,26 @@ class ExternalFacialDataset(Dataset):
     ):
         df = pd.read_csv(csv_path)
 
-        # 환경별 경로 복원 — 절대경로는 _remap_zip_path와 동일하게 'data' 앵커로 재매핑
-        if root_dir is not None:
-            df["image_path"] = df["image_path"].apply(
-                lambda p: _remap_zip_path(p, root_dir) if Path(p).is_absolute() else str(Path(root_dir) / p)
-            )
+        # CSV 포맷 자동 감지
+        self._use_zip = "zip_path" in df.columns and "filename" in df.columns
+
+        if self._use_zip:
+            # ZIP 모드: zip_path 경로만 재매핑 (filename은 ZIP 내부 상대경로라 불변)
+            if root_dir is not None:
+                df["zip_path"] = df["zip_path"].apply(
+                    lambda p: _remap_zip_path(p, root_dir)
+                )
+        else:
+            # 파일 모드: 절대경로는 'data' 앵커로 재매핑, 상대경로는 root_dir prefix 추가
+            if root_dir is not None:
+                df["image_path"] = df["image_path"].apply(
+                    lambda p: _remap_zip_path(p, root_dir) if Path(p).is_absolute()
+                              else str(Path(root_dir) / p)
+                )
 
         if "class_idx" not in df.columns:
             df["class_idx"] = df["class_name"].map(CLASS_MAP)
 
-        # 매핑 실패(NaN) 행 제거
         before = len(df)
         df = df.dropna(subset=["class_idx"]).reset_index(drop=True)
         df["class_idx"] = df["class_idx"].astype(int)
@@ -408,10 +416,11 @@ class ExternalFacialDataset(Dataset):
 
         self.df = df
         self._crop_size = crop_size
-        split = Path(csv_path).stem   # 파일명으로 split 추론 (train/val/test)
+        split = Path(csv_path).stem
         self.transform = transform or get_transforms(split)
 
-        logger.info(f"ExternalFacialDataset 로드: {csv_path} ({len(self.df)}건)")
+        mode = "ZIP" if self._use_zip else "파일"
+        logger.info(f"ExternalFacialDataset 로드({mode}): {csv_path} ({len(self.df)}건)")
 
     def __len__(self) -> int:
         return len(self.df)
@@ -421,9 +430,15 @@ class ExternalFacialDataset(Dataset):
         label = int(row["class_idx"])
 
         try:
-            image = Image.open(row["image_path"]).convert("RGB")
-        except (OSError, UnidentifiedImageError) as e:
-            logger.warning(f"[WARNING] 외부 이미지 로드 실패: {Path(row['image_path']).name} — {e}")
+            if self._use_zip:
+                image = _load_image_from_zip(row["zip_path"], row["filename"])
+                if image is None:
+                    raise OSError("ZIP에서 이미지 로드 실패")
+            else:
+                image = Image.open(row["image_path"]).convert("RGB")
+        except (OSError, UnidentifiedImageError, KeyError) as e:
+            name = row.get("filename", row.get("image_path", "unknown"))
+            logger.warning(f"[WARNING] 외부 이미지 로드 실패: {Path(str(name)).name} — {e}")
             return torch.zeros(3, self._crop_size, self._crop_size), label
 
         if self.transform:
