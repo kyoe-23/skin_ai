@@ -283,20 +283,32 @@ def main():
     external_train_size = 0
 
     if config.extra_data_dir:
-        ext_data_dir = Path(config.extra_data_dir)
-        ext_train = ExternalFacialDataset(
-            str(ext_data_dir / "train.csv"),
-            transform=train_transform,
-            root_dir=args.root_dir,
-        )
-        ext_val = ExternalFacialDataset(
-            str(ext_data_dir / "val.csv"),
-            transform=val_transform,
-            root_dir=args.root_dir,
-        )
-        external_train_size = len(ext_train)
-        train_dataset = ConcatDataset([train_dataset, ext_train])
-        val_dataset = ConcatDataset([val_dataset, ext_val])
+        # 공백으로 구분된 다중 경로 지원 (예: "data/dermnet data/isic2019 data/ham10000")
+        ext_dirs = [Path(p) for p in config.extra_data_dir.split() if p]
+        ext_train_datasets, ext_val_datasets = [], []
+        for ext_data_dir in ext_dirs:
+            train_csv = ext_data_dir / "train.csv"
+            val_csv = ext_data_dir / "val.csv"
+            if not train_csv.exists():
+                logger.warning(f"[WARNING] 외부 데이터 train.csv 없음, 건너뜀: {train_csv}")
+                continue
+            ext_train_datasets.append(ExternalFacialDataset(
+                str(train_csv),
+                transform=train_transform,
+                root_dir=args.root_dir,
+            ))
+            if val_csv.exists():
+                ext_val_datasets.append(ExternalFacialDataset(
+                    str(val_csv),
+                    transform=val_transform,
+                    root_dir=args.root_dir,
+                ))
+
+        if ext_train_datasets:
+            external_train_size = sum(len(d) for d in ext_train_datasets)
+            train_dataset = ConcatDataset([train_dataset] + ext_train_datasets)
+        if ext_val_datasets:
+            val_dataset = ConcatDataset([val_dataset] + ext_val_datasets)
 
         # AI Hub 합성 샘플은 weight=1.0, 외부 실제 이미지는 config.external_weight로 업샘플
         sample_weights = (
