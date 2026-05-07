@@ -305,7 +305,49 @@ MODEL_PATH=ai/results/DS_unified/checkpoint/best.pth
 
 ---
 
-## 6. 후속 과제
+## 6. 성능 미달 시 대응 방안
+
+> 기준: unified val Top-1 < 85% 또는 외부 실사 성능이 DS14_mixed·DS15_mixed 기준선 하회 시
+
+### 6.1 1순위 — num_workers 증가 (I/O 병목 해소)
+
+외부 이미지(DermNet·ISIC·HAM10000) 20,305장은 ZIP이 아닌 디스크 파일로 읽힌다.
+GPU가 한 배치를 연산하는 동안 다음 배치를 미리 읽지 못하면 GPU가 대기 상태가 된다.
+num_workers를 늘리면 병렬 프리패치로 GPU 활용률이 올라간다.
+
+**적용 방법** (노트북 학습 셀 환경변수 추가):
+
+```bash
+NUM_WORKERS=16 \
+EXTRA_DATA_DIR="data/processed/dermnet data/processed/isic2019 data/processed/ham10000" \
+...
+python -m ai.training.classifier.train --backbone densenet121 ...
+```
+
+**확인 기준**: `nvidia-smi`의 GPU-Util이 학습 중 12% 수준에 머물면 I/O 병목 → num_workers 증가 효과 있음
+
+### 6.2 2순위 — EfficientNet-B3 교체
+
+DenseNet121 대비 파라미터는 비슷하지만 ImageNet 기준 성능이 높다.
+
+| 모델 | 파라미터 | ImageNet Top-1 |
+|------|-----:|-----:|
+| DenseNet121 | 7M | 74.4% |
+| EfficientNet-B3 | 10M | 82.2% |
+| ResNet152 | 58M | 82.0% |
+
+EfficientNet-B3은 ResNet152와 동등한 성능에 파라미터는 1/6 수준이다.
+`model.py`에 이미 구현돼 있어 `--backbone` 한 줄 변경으로 교체 가능하다.
+
+```bash
+python -m ai.training.classifier.train --backbone efficientnet_b3 ...
+```
+
+**주의**: 배치 사이즈를 늘리면 오히려 성능 저하 발생 가능 (sharp minima 수렴). 현재 batch=64 유지 권장.
+
+---
+
+## 7. 후속 과제
 
 | 항목 | 내용 |
 |------|------|
