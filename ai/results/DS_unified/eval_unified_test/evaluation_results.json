@@ -1,0 +1,104 @@
+{
+  "backbone": "densenet121",
+  "eval_samples": 1120,
+  "top1_accuracy": 0.9759,
+  "top3_accuracy": 1.0,
+  "macro_f1": 0.9718,
+  "weighted_f1": 0.9631,
+  "macro_auc": 0.9994,
+  "target_achieved": true,
+  "per_class": {
+    "건선": {
+      "precision": 0.9669,
+      "recall": 0.9125,
+      "f1": 0.9389,
+      "auc": 0.9968,
+      "support": 160
+    },
+    "아토피피부염": {
+      "precision": 0.9554,
+      "recall": 0.9375,
+      "f1": 0.9464,
+      "auc": 0.9967,
+      "support": 160
+    },
+    "여드름": {
+      "precision": 0.9186,
+      "recall": 0.9875,
+      "f1": 0.9518,
+      "auc": 0.9993,
+      "support": 160
+    },
+    "주사": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "support": 80
+    },
+    "지루피부염": {
+      "precision": 0.9877,
+      "recall": 1.0,
+      "f1": 0.9938,
+      "auc": 1.0,
+      "support": 80
+    },
+    "정상": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "auc": 1.0,
+      "support": 80
+    }
+  },
+  "confusion_matrix": [
+    [
+      146,
+      6,
+      8,
+      0,
+      0,
+      0
+    ],
+    [
+      4,
+      150,
+      6,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      1,
+      158,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      80,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      80,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      80
+    ]
+  ]
+}
