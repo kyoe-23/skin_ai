@@ -335,13 +335,8 @@
       <div class="filter-row">
         <div class="filter-label">질환 분류</div>
         <div class="filter-chips" id="diseaseFilter">
-          <button class="chip active" data-filter="all"        onclick="filterDisease(this,'all')">전체</button>
-          <button class="chip"        data-filter="acne"       onclick="filterDisease(this,'acne')">여드름</button>
-          <button class="chip"        data-filter="rosacea"    onclick="filterDisease(this,'rosacea')">주사</button>
-          <button class="chip"        data-filter="seborrheic" onclick="filterDisease(this,'seborrheic')">지루성 피부염</button>
-          <button class="chip"        data-filter="eczema"     onclick="filterDisease(this,'eczema')">습진</button>
-          <button class="chip"        data-filter="psoriasis"  onclick="filterDisease(this,'psoriasis')">건선</button>
-          <button class="chip"        data-filter="melasma"    onclick="filterDisease(this,'melasma')">기미</button>
+          <button class="chip active" data-filter="all" onclick="filterDisease(this,'all')">전체</button>
+          <!-- 추가 chip은 disease_map.js의 VALID_DISEASES로 동적 생성 -->
         </div>
       </div>
       <div class="filter-bottom-row">
@@ -480,6 +475,7 @@
   </div>
 </div>
 
+<script src="../src/disease_map.js"></script>
 <script>
 // ── 샘플 데이터 ──────────────────────────────────────────────
 const allRecords = [
@@ -497,7 +493,27 @@ const allRecords = [
   { id:12, diag:'Seborrheic Dermatitis',diagKo:'지루성 피부염',   disease:'seborrheic', date:'2026-03-14', conf:79, correct:true,  myAnswer:'Seborrheic Dermatitis',          findings:['두피 비듬 및 가려움증 동반','항진균 샴푸 치료 효과적','스트레스 악화 요인 확인'], emoji:'🟡' },
 ];
 
-const diseaseLabels = { acne:'여드름', rosacea:'주사', seborrheic:'지루성 피부염', eczema:'습진', psoriasis:'건선', melasma:'기미' };
+// diseaseLabels: disease_map.js의 DISEASE_MAP을 우선 사용. mock 데이터의 legacy 키(rosacea/eczema/melasma 등)는 fallback으로 보존
+const LEGACY_LABELS = { acne:'여드름', rosacea:'주사', seborrheic:'지루성 피부염', eczema:'습진', psoriasis:'건선', melasma:'기미' };
+const diseaseLabels = new Proxy({}, {
+  get(_, key) {
+    return (typeof DISEASE_MAP !== 'undefined' && DISEASE_MAP[key]?.ko) || LEGACY_LABELS[key] || key;
+  }
+});
+
+// 질환 필터 chip 동적 생성 (DS_unified 11종)
+(function buildDiseaseChips() {
+  const container = document.getElementById('diseaseFilter');
+  if (!container || typeof VALID_DISEASES === 'undefined') return;
+  VALID_DISEASES.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.dataset.filter = d.key;
+    btn.textContent = d.nameKo;
+    btn.addEventListener('click', () => filterDisease(btn, d.key));
+    container.appendChild(btn);
+  });
+})();
 
 let currentDisease = 'all';
 let currentResult  = 'all';

@@ -56,8 +56,13 @@ INFER_RESIZE = 256            # 추론 전처리 resize
 INFER_CROP = 224              # 추론 전처리 center crop
 TOP_K = 3                     # 상위 예측 반환 수
 
-# DS14 기본값 — _load_model()에서 체크포인트 config로 덮어씀
-_DEFAULT_CLASS_NAMES = ["건선", "아토피피부염", "여드름", "주사", "지루피부염", "정상"]
+# DS_unified 11종 기본값 — _load_model()에서 체크포인트 config로 덮어씀.
+# fallback이 모델 output 차원(11)과 일치해야 IDX_TO_CLASS KeyError를 막을 수 있음.
+_DEFAULT_CLASS_NAMES = [
+    "건선", "아토피피부염", "여드름",
+    "광선각화증", "기저세포암", "멜라닌세포모반", "악성흑색종",
+    "지루각화증", "편평세포암", "피부섬유종", "혈관종",
+]
 CLASS_NAMES: list = list(_DEFAULT_CLASS_NAMES)
 CLASS_MAP: dict = {name: idx for idx, name in enumerate(CLASS_NAMES)}
 IDX_TO_CLASS: dict = {idx: name for idx, name in enumerate(CLASS_NAMES)}

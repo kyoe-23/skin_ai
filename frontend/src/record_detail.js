@@ -1,11 +1,4 @@
-const DISEASE_MAP = {
-  psoriasis:         { ko: '건선',        en: 'Psoriasis' },
-  atopic_dermatitis: { ko: '아토피피부염', en: 'Atopic Dermatitis' },
-  acne:              { ko: '여드름',       en: 'Acne Vulgaris' },
-  rosacea:           { ko: '주사',         en: 'Rosacea' },
-  seborrheic:        { ko: '지루피부염',   en: 'Seborrheic Dermatitis' },
-  normal:            { ko: '정상',         en: 'Normal' },
-};
+// DISEASE_MAP 은 disease_map.js 에서 글로벌로 제공 (DS_unified 11종)
 
 function animateRing(confPct) {
   const ring = document.getElementById('confRing');

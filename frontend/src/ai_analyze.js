@@ -1,22 +1,4 @@
-// 분석 가능 질환 목록 (DS_unified 11종)
-const VALID_DISEASES = [
-  { key: 'psoriasis',           nameKo: '건선',          nameEn: 'Psoriasis' },
-  { key: 'atopic_dermatitis',   nameKo: '아토피피부염',   nameEn: 'Atopic Dermatitis' },
-  { key: 'acne',                nameKo: '여드름',         nameEn: 'Acne Vulgaris' },
-  { key: 'actinic_keratosis',   nameKo: '광선각화증',     nameEn: 'Actinic Keratosis' },
-  { key: 'basal_cell_carcinoma',nameKo: '기저세포암',     nameEn: 'Basal Cell Carcinoma' },
-  { key: 'melanocytic_nevi',    nameKo: '멜라닌세포모반', nameEn: 'Melanocytic Nevi' },
-  { key: 'melanoma',            nameKo: '악성흑색종',     nameEn: 'Melanoma' },
-  { key: 'seborrheic_keratosis',nameKo: '지루각화증',     nameEn: 'Seborrheic Keratosis' },
-  { key: 'squamous_cell_carcinoma', nameKo: '편평세포암', nameEn: 'Squamous Cell Carcinoma' },
-  { key: 'dermatofibroma',      nameKo: '피부섬유종',     nameEn: 'Dermatofibroma' },
-  { key: 'vascular_lesion',     nameKo: '혈관종',         nameEn: 'Vascular Lesion' },
-];
-
-function diseaseByKoName(nameKo) {
-  return VALID_DISEASES.find(d => d.nameKo === nameKo) ?? { key: nameKo, nameKo, nameEn: nameKo };
-}
-
+// VALID_DISEASES, diseaseByKoName 은 disease_map.js 에서 글로벌로 제공
 // DOM 참조
 const fileInput        = document.getElementById('fileInput');
 const changeInput      = document.getElementById('changeInput');

@@ -4,13 +4,19 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// DS_unified 11종 한글명 → DB 키 매핑 (frontend/src/ai_analyze.js의 VALID_DISEASES와 키 일치)
 const CLASS_KEY_MAP = {
-  '건선':        'psoriasis',
-  '아토피피부염': 'atopic_dermatitis',
-  '여드름':      'acne',
-  '주사':        'rosacea',
-  '지루피부염':  'seborrheic',
-  '정상':        'normal',
+  '건선':           'psoriasis',
+  '아토피피부염':    'atopic_dermatitis',
+  '여드름':         'acne',
+  '광선각화증':      'actinic_keratosis',
+  '기저세포암':      'basal_cell_carcinoma',
+  '멜라닌세포모반':   'melanocytic_nevi',
+  '악성흑색종':      'melanoma',
+  '지루각화증':      'seborrheic_keratosis',
+  '편평세포암':      'squamous_cell_carcinoma',
+  '피부섬유종':      'dermatofibroma',
+  '혈관종':         'vascular_lesion',
 };
 
 // POST /api/records — 분석 결과 저장 (이미지는 이미 Supabase에 업로드된 상태)

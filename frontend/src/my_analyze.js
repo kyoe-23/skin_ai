@@ -4,15 +4,7 @@ let currentDisease = 'all';
 let currentPage = 1;
 const itemsPerPage = 5;
 
-const DISEASE_MAP = {
-  psoriasis:         { ko: '건선',        en: 'Psoriasis' },
-  atopic_dermatitis: { ko: '아토피피부염', en: 'Atopic Dermatitis' },
-  acne:              { ko: '여드름',       en: 'Acne Vulgaris' },
-  rosacea:           { ko: '주사',         en: 'Rosacea' },
-  seborrheic:        { ko: '지루피부염',   en: 'Seborrheic Dermatitis' },
-  normal:            { ko: '정상',         en: 'Normal' },
-};
-function getDiseaseLabel(d) { return DISEASE_MAP[d]?.ko || d; }
+// DISEASE_MAP, getDiseaseLabel 은 disease_map.js 에서 글로벌로 제공 (DS_unified 11종)
 
 function toDisplayRecord(r) {
   const conf = r.confidence != null ? Math.round(r.confidence * 100) : 0;
@@ -233,7 +225,11 @@ function renderDiseaseChart() {
 
   const labels = sorted.map(([d]) => getDiseaseLabel(d));
   const data = sorted.map(([, c]) => c);
-  const colors = ['#2563eb', '#7c3aed', '#16a34a', '#d97706', '#dc2626', '#0891b2', '#9333ea'];
+  // DS_unified 11종 — 클래스마다 구별되는 색상 11색
+  const colors = [
+    '#2563eb', '#7c3aed', '#16a34a', '#d97706', '#dc2626',
+    '#0891b2', '#9333ea', '#db2777', '#65a30d', '#ea580c', '#475569',
+  ];
 
   const ctx = document.getElementById('diseaseDonutChart').getContext('2d');
   if (donutChart) donutChart.destroy();

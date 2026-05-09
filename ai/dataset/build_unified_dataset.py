@@ -59,6 +59,8 @@ DS15_TARGET_CLASSES = {
 }
 
 COMMON_COLS = ["zip_path", "filename", "class_idx", "class_name", "split"]
+# clinical_ref 통계용으로 보존하는 메타데이터 컬럼 (DS14/DS15에 모두 존재하지 않을 수 있음 → 부분 보존)
+META_COLS = ["age_range", "gender", "severity"]
 
 DEFAULT_TEST_RATIO = 0.1
 RANDOM_SEED = 42
@@ -89,8 +91,9 @@ def _load_and_filter(csv_path: Path, target_classes: set[str], remap: dict[int, 
     df["class_idx"] = df["class_idx"].map(remap)
     df["source"] = source_tag
 
-    # AihubFacialDataset 호환 컬럼만 유지
-    keep_cols = [c for c in COMMON_COLS + ["source"] if c in df.columns]
+    # AihubFacialDataset 호환 컬럼 + clinical_ref용 메타데이터 컬럼 유지
+    # (메타 컬럼이 원본에 없는 데이터셋은 NaN으로 채워짐 — value_counts(dropna=True)에서 자동 제외)
+    keep_cols = [c for c in COMMON_COLS + META_COLS + ["source"] if c in df.columns]
     return df[keep_cols].reset_index(drop=True)
 
 
