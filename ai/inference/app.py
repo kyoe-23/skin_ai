@@ -160,7 +160,7 @@ def _load_thresholds(threshold_path: str) -> Optional[dict]:
     Returns:
         dict 또는 None
     """
-    if not Path(threshold_path).exists():
+    if not threshold_path or not Path(threshold_path).exists():
         logger.info("[INFO] 임계값 파일 없음 — argmax 방식 사용")
         return None
 
@@ -268,8 +268,8 @@ def _load_model():
     threshold_path = os.environ.get("THRESHOLD_PATH", "ai/results/thresholds.json")
     _thresholds = _load_thresholds(threshold_path)
 
-    data_csv = os.environ.get("DATA_CSV", "data/processed/train.csv")
-    if Path(data_csv).exists():
+    data_csv = os.environ.get("DATA_CSV", "data/processed/unified/train.csv")
+    if data_csv and Path(data_csv).exists():
         df = pd.read_csv(data_csv)
         _clinical_ref = _build_clinical_ref(df)
         logger.info(f"[INFO] clinical_ref 생성 완료 ({len(df)}건)")
