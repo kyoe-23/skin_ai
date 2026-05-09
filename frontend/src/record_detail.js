@@ -1,5 +1,11 @@
 // DISEASE_MAP 은 disease_map.js 에서 글로벌로 제공 (DS_unified 11종)
 
+// ── 전역 상태 ──
+let _currentRecordId = null;
+let _chatContext     = {};
+
+const _AI_AVATAR_RD = `<div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>`;
+
 function animateRing(confPct) {
   const ring = document.getElementById('confRing');
   if (!ring) return;
@@ -21,6 +27,7 @@ function animateDiffBars() {
 async function loadRecordDetail() {
   const id = new URLSearchParams(location.search).get('id');
   if (!id) return;
+  _currentRecordId = id;
 
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (!token) return;
@@ -39,18 +46,6 @@ async function loadRecordDetail() {
     document.getElementById('detailDiagEn').textContent = info.en;
     document.getElementById('detailConf').textContent = `AI 신뢰도 ${confPct}%`;
     document.getElementById('detailDate').textContent = dateStr;
-
-    const resultChip = document.getElementById('detailResult');
-    if (r.user_answer == null) {
-      resultChip.textContent = '미답변';
-      resultChip.className = 'meta-chip chip-gray';
-    } else if (r.is_correct) {
-      resultChip.textContent = '정답';
-      resultChip.className = 'meta-chip chip-green';
-    } else {
-      resultChip.textContent = '오답';
-      resultChip.className = 'meta-chip chip-red';
-    }
 
     // 이미지
     const imgEl = document.getElementById('analyzedImg');
@@ -72,59 +67,29 @@ async function loadRecordDetail() {
     document.getElementById('confVal').textContent = `${confPct}%`;
     animateRing(confPct);
 
-    // 내 답변 vs AI
-    const myAnswerInfo = r.user_answer ? (DISEASE_MAP[r.user_answer] || { ko: r.user_answer, en: r.user_answer }) : null;
-    document.getElementById('myAnswer').textContent = myAnswerInfo ? myAnswerInfo.ko : '미답변';
-    document.querySelector('.compare-box.my .compare-sub').textContent = myAnswerInfo ? myAnswerInfo.en : '-';
-    const compareResult = document.getElementById('compareResult');
-    if (r.user_answer == null) {
-      compareResult.className = 'compare-result';
-      compareResult.style.color = '#9ca3af';
-      compareResult.innerHTML = '<span>-</span>';
-    } else if (r.is_correct) {
-      compareResult.className = 'compare-result correct';
-      compareResult.innerHTML = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>정답`;
+    // AI 소견 (report JSON)
+    let report = null;
+    try { report = r.ai_findings ? JSON.parse(r.ai_findings) : null; } catch { report = null; }
+    const findingEl = document.getElementById('findingList');
+    if (report && (report.summary || report.features)) {
+      findingEl.innerHTML = [
+        report.summary   && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text">${report.summary}</div></div>`,
+        report.features  && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text">${report.features}</div></div>`,
+        report.advice    && `<div class="finding-item"><div class="finding-dot" style="background:#16a34a"></div><div class="finding-text">${report.advice}</div></div>`,
+        report.disclaimer && `<div class="finding-item" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;"><div class="finding-text" style="color:#92400e;font-size:12px;">${report.disclaimer}</div></div>`,
+      ].filter(Boolean).join('');
     } else {
-      compareResult.className = 'compare-result wrong';
-      compareResult.innerHTML = `<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>오답`;
+      findingEl.innerHTML = '<div style="font-size:13px;color:#c4cad4;padding:8px 0;">AI 소견 정보가 없습니다</div>';
     }
-    document.getElementById('aiAnswer').textContent = info.ko;
-    document.querySelector('.compare-box.ai .compare-sub').textContent = info.en;
 
-    // 감별진단
-    const diffData = r.differential || [];
-    const allDiff = [
-      { nameKo: info.ko, nameEn: info.en, confidence: r.confidence },
-      ...diffData.map(d => {
-        const di = DISEASE_MAP[d.key] || { ko: d.nameKo || d.key, en: d.nameEn || d.key };
-        return { nameKo: di.ko, nameEn: di.en, confidence: d.confidence };
-      }),
-    ];
-    document.getElementById('diffList').innerHTML = allDiff.map((d, i) => {
-      const pct = Math.round((d.confidence || 0) * 100);
-      const isFirst = i === 0;
-      return `<div class="diff-item">
-        <div class="diff-rank ${isFirst ? 'first' : 'other'}">${i + 1}</div>
-        <div class="diff-info">
-          <div class="diff-name">${d.nameKo}</div>
-          <div class="diff-name-en">${d.nameEn}</div>
-        </div>
-        <div class="diff-bar-wrap">
-          <div class="diff-bar-row">
-            <div class="diff-bar-bg"><div class="diff-bar ${isFirst ? '' : 'low'}" style="width:${pct}%"></div></div>
-            <div class="diff-pct ${isFirst ? '' : 'low'}">${pct}%</div>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
+    // 채팅 컨텍스트 저장
+    _chatContext = { class_name: info.ko, confidence: r.confidence, report };
 
-    // AI 소견
-    const findings = r.ai_findings ? r.ai_findings.split('\n').filter(Boolean) : [];
-    document.getElementById('findingList').innerHTML = findings.length
-      ? findings.map(f => `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text">${f}</div></div>`).join('')
-      : '<div style="font-size:13px;color:#c4cad4;padding:8px 0;">AI 소견 정보가 없습니다</div>';
-
-    animateDiffBars();
+    // 저장된 채팅 기록 복원
+    const savedChat = r.chat_history || [];
+    if (savedChat.length > 0) {
+      renderChatHistory(savedChat);
+    }
   } catch (err) {
     if (err.message === 'SESSION_EXPIRED') return;
     console.error('기록 상세 로드 실패:', err);
@@ -163,6 +128,113 @@ function shareRecord() {
   } else {
     navigator.clipboard.writeText(location.href).then(() => showToast('링크가 복사됐어요'));
   }
+}
+
+
+// ── LLM 채팅 ─────────────────────────────────────────
+function setQuestion(el) {
+  const input = document.getElementById('chatInput');
+  input.value = el.textContent;
+  input.style.height = 'auto';
+  input.style.height = input.scrollHeight + 'px';
+  input.focus();
+}
+
+function renderChatHistory(messages) {
+  const messagesEl = document.getElementById('chatMessages');
+  const suggestions = document.getElementById('chatSuggestions');
+  if (suggestions && messages.length > 0) suggestions.style.display = 'none';
+
+  messages.forEach(m => {
+    const safe = (m.content || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    if (m.role === 'user') {
+      messagesEl.insertAdjacentHTML('beforeend', `
+        <div style="align-self:flex-end;display:flex;align-items:flex-end;max-width:80%;">
+          <div style="background:#2563eb;color:#fff;padding:10px 14px;border-radius:16px 16px 4px 16px;font-size:13px;line-height:1.6;">${safe}</div>
+        </div>`);
+    } else {
+      messagesEl.insertAdjacentHTML('beforeend', `
+        <div style="align-self:flex-start;display:flex;gap:10px;align-items:flex-start;max-width:90%;">
+          ${_AI_AVATAR_RD}
+          <div style="background:#f8fafc;border:1px solid #e8eaed;color:#374151;padding:12px 16px;border-radius:4px 16px 16px 16px;font-size:13px;line-height:1.7;">${safe}</div>
+        </div>`);
+    }
+  });
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function saveChatMessages(messages) {
+  if (!_currentRecordId || !messages.length) return;
+  try {
+    await apiFetch(`/api/records/${_currentRecordId}/chat`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+    });
+  } catch (err) {
+    console.error('채팅 저장 실패:', err);
+  }
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const question = input.value.trim();
+  if (!question) return;
+
+  const suggestions = document.getElementById('chatSuggestions');
+  if (suggestions) suggestions.style.display = 'none';
+
+  const messagesEl = document.getElementById('chatMessages');
+  const safeQ = question.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  messagesEl.insertAdjacentHTML('beforeend', `
+    <div style="align-self:flex-end;display:flex;align-items:flex-end;max-width:80%;">
+      <div style="background:#2563eb;color:#fff;padding:10px 14px;border-radius:16px 16px 4px 16px;font-size:13px;line-height:1.6;">${safeQ}</div>
+    </div>`);
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  const loadingId = 'chat-loading-' + Date.now();
+  messagesEl.insertAdjacentHTML('beforeend', `
+    <div id="${loadingId}" style="align-self:flex-start;display:flex;gap:10px;align-items:flex-start;">
+      ${_AI_AVATAR_RD}
+      <div style="background:#f3f4f6;border:1px solid #e8eaed;padding:12px 16px;border-radius:4px 16px 16px 16px;display:flex;gap:5px;align-items:center;">
+        <div class="chat-dot"></div><div class="chat-dot"></div><div class="chat-dot"></div>
+      </div>
+    </div>`);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  try {
+    const res = await apiFetch('/api/analyze/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, context: _chatContext }),
+    });
+    const data = await res.json();
+    const rawAnswer = data.answer || 'LLM이 비활성화되어 있습니다.';
+    const safeA = rawAnswer.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    document.getElementById(loadingId)?.remove();
+    messagesEl.insertAdjacentHTML('beforeend', `
+      <div style="align-self:flex-start;display:flex;gap:10px;align-items:flex-start;max-width:90%;">
+        ${_AI_AVATAR_RD}
+        <div style="background:#f8fafc;border:1px solid #e8eaed;color:#374151;padding:12px 16px;border-radius:4px 16px 16px 16px;font-size:13px;line-height:1.7;">${safeA}</div>
+      </div>`);
+
+    const ts = new Date().toISOString();
+    saveChatMessages([
+      { role: 'user', content: question,   ts },
+      { role: 'ai',   content: rawAnswer,  ts },
+    ]);
+  } catch {
+    document.getElementById(loadingId)?.remove();
+    messagesEl.insertAdjacentHTML('beforeend', `
+      <div style="align-self:flex-start;display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:28px;height:28px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:4px 16px 16px 16px;font-size:13px;">오류가 발생했습니다. 다시 시도해주세요.</div>
+      </div>`);
+  }
+  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
 

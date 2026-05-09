@@ -118,7 +118,7 @@ function renderList(records) {
     const confClass = r.conf >= 80 ? 'high-conf' : r.conf >= 65 ? 'med-conf' : 'low-conf';
     const confLabel = r.conf >= 80 ? '고신뢰' : r.conf >= 65 ? '중신뢰' : '저신뢰';
     return `
-    <div class="record-item" style="animation-delay:${i * 0.04}s" onclick="openModal(${r.id})">
+    <div class="record-item" style="animation-delay:${i * 0.04}s" onclick="openModal('${r.id}')">
       <div class="record-thumb">${r.imageUrl ? `<img src="${r.imageUrl}" alt="${r.diagKo}">` : r.emoji || '🔬'}</div>
       <div class="record-body">
         <div class="record-top">
@@ -162,21 +162,7 @@ function renderRing(pct) {
 
 // ── 모달 ──
 function openModal(id) {
-  const r = allRecords.find(x => x.id === id);
-  if (!r) return;
-  document.getElementById('modalTitle').textContent = r.diag;
-  document.getElementById('modalDate').textContent = `분석일: ${r.date}`;
-  const imgEl = document.getElementById('modalImg');
-  imgEl.innerHTML = r.imageUrl ? `<img src="${r.imageUrl}" alt="${r.diagKo}">` : (r.emoji || '🔬');
-  document.getElementById('modalDiagName').textContent = r.diag;
-  document.getElementById('modalDiagKo').textContent = r.diagKo;
-  document.getElementById('modalConf').textContent = `신뢰도 ${r.conf}%`;
-  document.getElementById('modalSummaryText').textContent = r.summary || '-';
-  document.getElementById('modalFindings').innerHTML = (r.findings || []).map(f =>
-    `<div class="modal-finding"><div class="modal-finding-dot"></div>${f}</div>`
-  ).join('') || '<div style="font-size:12px;color:#c4cad4;">소견 정보가 없습니다</div>';
-  document.getElementById('modalOverlay').classList.add('show');
-  document.body.style.overflow = 'hidden';
+  window.location.href = 'record_detail.html?id=' + id;
 }
 
 function closeModal(e) {

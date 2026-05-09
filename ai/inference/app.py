@@ -461,7 +461,6 @@ def predict():
 
         gradcam_b64 = _generate_gradcam(image, input_tensor)
         clinical_ref = _clinical_ref.get(pred_class) if _clinical_ref else None
-        report_obj = generate_report(prediction, clinical_ref)
         elapsed_ms = round((time.time() - start_time) * 1000)
 
         return jsonify({
@@ -469,7 +468,7 @@ def predict():
             "prediction": prediction,
             "gradcam": gradcam_b64,
             "clinical_ref": clinical_ref,
-            "report": report_obj,
+            "report": None,
             "processing_time_ms": elapsed_ms,
         })
 
@@ -481,6 +480,20 @@ def predict():
         logger.error(f"[ERROR] 예측 처리 중 예상치 못한 오류: error={e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": "분석 중 오류가 발생했습니다."}), 500
+
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    """LLM 채팅 — 진단 컨텍스트 기반 후속 질문 처리."""
+    from llm_service import chat_response
+    data = request.get_json(silent=True) or {}
+    question = data.get("question", "").strip()
+    if not question:
+        return jsonify({"success": False, "error": "question이 필요합니다."}), 400
+    answer = chat_response(question, data.get("context", {}))
+    if answer is None:
+        return jsonify({"success": True, "answer": None, "enabled": False})
+    return jsonify({"success": True, "answer": answer, "enabled": True})
 
 
 @app.route("/report", methods=["POST"])

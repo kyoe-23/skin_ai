@@ -22,7 +22,7 @@ const CLASS_KEY_MAP = {
 // POST /api/records — 분석 결과 저장 (이미지는 이미 Supabase에 업로드된 상태)
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { image_url, primary_diagnosis, confidence, differential, gradcam_b64, clinical_ref } = req.body;
+    const { image_url, primary_diagnosis, confidence, differential, gradcam_b64, clinical_ref, ai_findings } = req.body;
 
     if (!image_url || !primary_diagnosis || confidence == null) {
       return res.status(400).json({ message: '이미지 URL, 진단명, 신뢰도는 필수입니다.' });
@@ -53,6 +53,7 @@ router.post('/', authenticateToken, async (req, res) => {
         confidence:        parseFloat(confidence),
         differential:      differential  || null,
         clinical_ref:      clinical_ref  || null,
+        ai_findings:       ai_findings   || null,
         gradcam_url:       gradcamUrl,
         status:            'pending',
       }])
@@ -98,6 +99,40 @@ router.get('/:id', authenticateToken, async (req, res) => {
     res.json({ record: data });
   } catch (err) {
     console.error('기록 상세 조회 오류:', err);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// PATCH /api/records/:id/chat — 채팅 메시지 추가 저장
+router.patch('/:id/chat', authenticateToken, async (req, res) => {
+  const { messages } = req.body;
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ message: 'messages 배열이 필요합니다.' });
+  }
+
+  try {
+    const { data: record, error: fetchErr } = await supabase
+      .from('analysis_records')
+      .select('record_id, chat_history')
+      .eq('record_id', req.params.id)
+      .eq('user_id', req.user.user_id)
+      .single();
+
+    if (fetchErr || !record) return res.status(404).json({ message: '기록을 찾을 수 없습니다.' });
+
+    const existing = record.chat_history || [];
+    const updated  = [...existing, ...messages];
+
+    const { error } = await supabase
+      .from('analysis_records')
+      .update({ chat_history: updated })
+      .eq('record_id', req.params.id)
+      .eq('user_id', req.user.user_id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('채팅 기록 저장 오류:', err);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   }
 });

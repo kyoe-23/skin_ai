@@ -97,11 +97,40 @@ router.post('/run', authenticateToken, async (req, res) => {
 
     const flaskRes = await axios.post(`${FLASK_URL}/predict`, form, {
       headers: form.getHeaders(),
-      timeout: 30000,
+      timeout: 300000,
     });
     res.json(flaskRes.data);
   } catch (err) {
     console.error('[analyze/run]', err.message);
+    res.status(502).json({ success: false, error: 'AI 서버와 통신에 실패했습니다.' });
+  }
+});
+
+// POST /api/analyze/report — LLM 리포트 생성 프록시 (분석 완료 후 비동기 호출)
+router.post('/report', authenticateToken, async (req, res) => {
+  try {
+    const flaskRes = await axios.post(`${FLASK_URL}/report`, req.body, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 60000,
+    });
+    res.json(flaskRes.data);
+  } catch (err) {
+    console.error('[analyze/report]', err.message);
+    res.status(502).json({ success: false, error: 'AI 서버와 통신에 실패했습니다.' });
+  }
+});
+
+// POST /api/analyze/chat — LLM 채팅 프록시
+router.post('/chat', authenticateToken, async (req, res) => {
+  const { question, context } = req.body;
+  if (!question) return res.status(400).json({ success: false, error: 'question이 필요합니다.' });
+  try {
+    const flaskRes = await axios.post(`${FLASK_URL}/chat`, { question, context: context || {} }, {
+      timeout: 60000,
+    });
+    res.json(flaskRes.data);
+  } catch (err) {
+    console.error('[analyze/chat]', err.message);
     res.status(502).json({ success: false, error: 'AI 서버와 통신에 실패했습니다.' });
   }
 });

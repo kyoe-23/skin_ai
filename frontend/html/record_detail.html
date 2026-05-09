@@ -115,6 +115,16 @@
   .toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:#1a1a2e; color:#fff; padding:11px 20px; border-radius:10px; font-size:13px; font-weight:500; opacity:0; transition:all 0.25s; white-space:nowrap; z-index:999; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
+  /* ── 채팅 UI ── */
+  .suggest-chip { padding:7px 12px; border-radius:20px; border:1px solid #e0e7ff; background:#eff6ff; color:#2563eb; font-size:12px; font-weight:500; cursor:pointer; font-family:inherit; transition:all 0.15s; line-height:1.4; }
+  .suggest-chip:hover { background:#dbeafe; border-color:#93c5fd; }
+  .chat-input-outer { display:flex; gap:10px; align-items:flex-end; background:#fff; border:1.5px solid #e5e7eb; border-radius:14px; padding:10px 10px 10px 14px; transition:border-color 0.15s, box-shadow 0.15s; }
+  .chat-input-outer:focus-within { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.08); }
+  @keyframes chatDotBounce { 0%,80%,100% { transform:translateY(0); opacity:0.4; } 40% { transform:translateY(-5px); opacity:1; } }
+  .chat-dot { width:6px; height:6px; border-radius:50%; background:#9ca3af; animation:chatDotBounce 1.2s ease infinite; display:inline-block; }
+  .chat-dot:nth-child(2) { animation-delay:0.18s; }
+  .chat-dot:nth-child(3) { animation-delay:0.36s; }
+
   @media (max-width: 480px) {
     .wrap { padding: 16px 16px 60px; }
     .compare-row { grid-template-columns: 1fr; }
@@ -151,9 +161,8 @@
       <div class="result-name" id="detailDiagName">건선</div>
       <div class="result-name-en" id="detailDiagEn">Psoriasis</div>
       <div class="result-meta">
-        <span class="meta-chip chip-blue" id="detailConf">AI 신뢰도 91%</span>
-        <span class="meta-chip chip-green" id="detailResult">정답</span>
-        <span class="meta-chip chip-gray" id="detailDate">2026.04.16</span>
+        <span class="meta-chip chip-blue" id="detailConf">AI 신뢰도 -</span>
+        <span class="meta-chip chip-gray" id="detailDate">-</span>
       </div>
     </div>
   </div>
@@ -190,104 +199,60 @@
     </div>
   </div>
 
-  <!-- 내 답변 vs AI 비교 -->
-  <div class="card">
-    <div class="card-title"><div class="card-title-dot"></div> 내 답변 vs AI 결과</div>
-    <div class="compare-row">
-      <div class="compare-box my">
-        <div class="compare-label">내 답변</div>
-        <div class="compare-name" id="myAnswer">건선</div>
-        <div class="compare-sub">Psoriasis</div>
-        <div class="compare-result correct" id="compareResult">
-          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-          정답
-        </div>
-      </div>
-      <div class="compare-box ai">
-        <div class="compare-label">AI 결과</div>
-        <div class="compare-name" id="aiAnswer">건선</div>
-        <div class="compare-sub">Psoriasis</div>
-        <div class="compare-result" style="color:#2563eb">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          AI 진단
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 감별진단 -->
-  <div class="card">
-    <div class="card-title"><div class="card-title-dot"></div> 감별진단</div>
-    <div class="diff-list" id="diffList">
-      <div class="diff-item">
-        <div class="diff-rank first">1</div>
-        <div class="diff-info"><div class="diff-name">건선</div><div class="diff-name-en">Psoriasis</div></div>
-        <div class="diff-bar-wrap">
-          <div class="diff-bar-row">
-            <div class="diff-bar-bg"><div class="diff-bar" style="width:91%"></div></div>
-            <div class="diff-pct">91%</div>
-          </div>
-        </div>
-      </div>
-      <div class="diff-item">
-        <div class="diff-rank other">2</div>
-        <div class="diff-info"><div class="diff-name">지루성 피부염</div><div class="diff-name-en">Seborrheic Dermatitis</div></div>
-        <div class="diff-bar-wrap">
-          <div class="diff-bar-row">
-            <div class="diff-bar-bg"><div class="diff-bar low" style="width:6%"></div></div>
-            <div class="diff-pct low">6%</div>
-          </div>
-        </div>
-      </div>
-      <div class="diff-item">
-        <div class="diff-rank other">3</div>
-        <div class="diff-info"><div class="diff-name">아토피 피부염</div><div class="diff-name-en">Atopic Dermatitis</div></div>
-        <div class="diff-bar-wrap">
-          <div class="diff-bar-row">
-            <div class="diff-bar-bg"><div class="diff-bar low" style="width:3%"></div></div>
-            <div class="diff-pct low">3%</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- AI 소견 -->
   <div class="card">
     <div class="card-title"><div class="card-title-dot"></div> AI 소견</div>
-    <div class="finding-list" id="findingList">
-      <div class="finding-item"><div class="finding-dot"></div><div class="finding-text">경계가 명확한 홍반성 판(erythematous plaque)이 관찰되며, 표면에 은백색 인설(silvery scale)이 두껍게 덮여 있습니다.</div></div>
-      <div class="finding-item"><div class="finding-dot"></div><div class="finding-text">병변의 분포가 대칭적이며, 주로 팔꿈치·무릎 등 압력을 받는 부위에 집중되어 있습니다.</div></div>
-      <div class="finding-item"><div class="finding-dot"></div><div class="finding-text">Auspitz sign 양성 소견으로 건선에 합당한 임상 양상입니다.</div></div>
+    <div class="finding-list" id="findingList"></div>
+  </div>
+
+  <!-- LLM 채팅 (Claude 스타일) -->
+  <div style="border-radius:16px;overflow:hidden;border:1px solid #e8eaed;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.04),0 4px 16px rgba(37,99,235,0.05);margin-bottom:14px;">
+    <!-- 헤더 -->
+    <div style="padding:14px 20px;background:linear-gradient(135deg,#f8faff,#faf5ff);border-bottom:1px solid #e8eaed;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#1a1a2e;">AI 의료 어시스턴트</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:1px;">이전 대화가 이어집니다</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div style="width:7px;height:7px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,0.15);"></div>
+        <span style="font-size:11px;color:#16a34a;font-weight:600;">온라인</span>
+      </div>
+    </div>
+    <!-- 예시 질문 (메시지 없을 때만 표시) -->
+    <div id="chatSuggestions" style="padding:14px 20px;border-bottom:1px solid #f3f4f6;">
+      <div style="font-size:11px;font-weight:700;color:#c4cad4;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">이런 질문을 해보세요</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <button class="suggest-chip" onclick="setQuestion(this)">이 질환의 주요 증상이 뭔가요?</button>
+        <button class="suggest-chip" onclick="setQuestion(this)">언제 피부과에 가야 하나요?</button>
+        <button class="suggest-chip" onclick="setQuestion(this)">일상에서 주의할 점은?</button>
+      </div>
+    </div>
+    <!-- 메시지 영역 -->
+    <div id="chatMessages" style="display:flex;flex-direction:column;gap:14px;padding:16px 20px;min-height:60px;max-height:400px;overflow-y:auto;"></div>
+    <!-- 입력창 -->
+    <div style="padding:14px 20px 18px;border-top:1px solid #f0f2f5;background:#fafcff;">
+      <div class="chat-input-outer">
+        <textarea id="chatInput" rows="1"
+          placeholder="이 진단에 대해 궁금한 점을 질문해보세요..."
+          style="flex:1;border:none;outline:none;font-size:13px;font-family:inherit;resize:none;line-height:1.6;max-height:100px;overflow-y:auto;background:transparent;color:#1a1a2e;"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+        <button onclick="sendChat()"
+          style="width:36px;height:36px;border-radius:10px;background:#2563eb;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;"
+          onmouseover="this.style.background='#1d4ed8'"
+          onmouseout="this.style.background='#2563eb'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div style="font-size:11px;color:#c4cad4;text-align:center;margin-top:10px;">AI 응답은 참고용이며, 의학적 진단을 대체하지 않습니다.</div>
     </div>
   </div>
 
-  <!-- 질환 학습 정보 -->
-  <div class="card">
-    <div class="card-title"><div class="card-title-dot" style="background:#7c3aed"></div> 질환 학습 정보</div>
-    <div class="disease-info" id="diseaseInfo">
-      <div class="info-row"><div class="info-label">정의</div><div class="info-val">건선은 만성 염증성 피부질환으로, 피부 세포의 과도한 증식으로 인해 두꺼운 인설을 동반한 홍반성 판이 형성됩니다.</div></div>
-      <div class="info-row"><div class="info-label">유병률</div><div class="info-val">전 세계 인구의 약 2~3% 유병률을 보이며, 한국에서는 약 1~2%로 추정됩니다.</div></div>
-      <div class="info-row"><div class="info-label">주요 증상</div><div class="info-val">은백색 인설, 경계 명확한 홍반성 판, 소양감, Auspitz sign, Köbner 현상</div></div>
-      <div class="info-row"><div class="info-label">치료</div><div class="info-val">국소 스테로이드, 비타민 D 유도체, 광선치료(PUVA/NB-UVB), 생물학적 제제 등</div></div>
-    </div>
-  </div>
-
-  <!-- 액션 버튼 -->
-  <div class="action-row">
-    <button class="act-btn" onclick="navigateTo('ai_analyze.html')">
-      <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-      다시 분석
-    </button>
-    <button class="act-btn" onclick="navigateTo('community.html')">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      커뮤니티 공유
-    </button>
-    <button class="act-btn primary" onclick="navigateTo('records.html')">
-      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      전체 기록 보기
-    </button>
-  </div>
 
 </div>
 

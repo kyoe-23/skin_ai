@@ -163,3 +163,46 @@ def generate_report(prediction: dict, clinical_ref: Optional[dict]) -> Optional[
     except anthropic.APIError as e:
         logger.error(f"[LLM] Claude API 오류: error={e}")
         return None
+
+
+def chat_response(question: str, context: dict) -> Optional[str]:
+    """진단 컨텍스트 기반 후속 질문 응답.
+
+    Args:
+        question: 사용자 질문
+        context: {class_name, confidence, report} 딕셔너리
+
+    Returns:
+        str 응답 또는 None (LLM 비활성·실패 시).
+    """
+    client = _get_client()
+    if client is None:
+        return None
+
+    class_name = context.get("class_name", "알 수 없음")
+    confidence = context.get("confidence", 0.0)
+    report = context.get("report") or {}
+
+    system = (
+        "당신은 피부과 전문의를 보조하는 의료 AI 어시스턴트입니다. "
+        "사용자의 피부 AI 분석 결과를 바탕으로 궁금한 점에 친절하고 간결하게 답변합니다. "
+        "확정 진단·처방은 반드시 피부과 전문의에게 받도록 안내하세요. "
+        "약품명·복용량·구체적 처방은 언급하지 마세요."
+    )
+    user_msg = (
+        f"[분석 결과] 질환: {class_name}, 신뢰도: {confidence*100:.1f}%\n"
+        f"[AI 소견 요약] {report.get('summary', '없음')}\n\n"
+        f"[질문] {question}"
+    )
+
+    try:
+        response = client.messages.create(
+            model=os.environ.get("LLM_MODEL_CHAT", DEFAULT_MODEL),
+            max_tokens=512,
+            system=system,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        return response.content[0].text.strip()
+    except anthropic.APIError as e:
+        logger.error(f"[LLM] 채팅 API 오류: error={e}")
+        return None

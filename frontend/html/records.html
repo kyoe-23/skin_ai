@@ -475,23 +475,58 @@
   </div>
 </div>
 
+<script src="../src/auth_fetch.js"></script>
 <script src="../src/disease_map.js"></script>
 <script>
-// ── 샘플 데이터 ──────────────────────────────────────────────
-const allRecords = [
-  { id:1,  diag:'Acne Vulgaris',        diagKo:'심상성 여드름',   disease:'acne',       date:'2026-04-05', conf:87, correct:true,  myAnswer:'Acne Vulgaris',                  findings:['뺨과 이마에 다수의 폐쇄면포 및 개방면포 관찰','홍반성 구진 및 농포 혼재, T존 및 양 뺨 분포','피지 분비 과다 소견 동반'], emoji:'😷' },
-  { id:2,  diag:'Rosacea',              diagKo:'주사',            disease:'rosacea',    date:'2026-04-04', conf:72, correct:false, myAnswer:'Acne Vulgaris',                  findings:['중안면부 미만성 홍반 및 모세혈관 확장','구진농포형 병변이 주로 뺨과 코에 분포','면포는 관찰되지 않음 (여드름과 감별점)'], emoji:'🌹' },
-  { id:3,  diag:'Seborrheic Dermatitis',diagKo:'지루성 피부염',   disease:'seborrheic', date:'2026-04-03', conf:81, correct:true,  myAnswer:'Seborrheic Dermatitis',          findings:['비늘성 홍반 병변이 두피·눈썹·비구순구에 분포','황색 기름진 인설 특징적으로 관찰','말라세지아 과증식과 연관 소견'], emoji:'🟡' },
-  { id:4,  diag:'Atopic Dermatitis',    diagKo:'아토피 피부염',   disease:'eczema',     date:'2026-04-02', conf:90, correct:true,  myAnswer:'Atopic Dermatitis',              findings:['굴측부 피부에 홍반성 태선화 병변','건조 피부 및 소양감 동반 소견','혈청 IgE 상승 가능성 시사'], emoji:'🔵' },
-  { id:5,  diag:'Melasma',             diagKo:'기미',             disease:'melasma',    date:'2026-04-01', conf:65, correct:false, myAnswer:'Post-inflammatory Hyperpigmentation', findings:['양측 뺨·이마에 대칭적 갈색 색소 침착','경계가 불규칙하며 광선 노출 부위에 호발','여성 호르몬 및 자외선 관련 색소 질환 시사'], emoji:'🟤' },
-  { id:6,  diag:'Psoriasis',           diagKo:'건선',             disease:'psoriasis',  date:'2026-03-31', conf:78, correct:true,  myAnswer:'Psoriasis',                      findings:['경계 명확한 홍반성 판에 은백색 인설 부착','쾨브너 현상 소견 확인','두피·팔꿈치·무릎에 호발하는 분포 패턴'], emoji:'⚪' },
-  { id:7,  diag:'Acne Vulgaris',        diagKo:'심상성 여드름',   disease:'acne',       date:'2026-03-30', conf:83, correct:true,  myAnswer:'Acne Vulgaris',                  findings:['다형성 병변 (면포+구진+농포) 혼재','이마 및 코에 집중 분포','안드로겐 감수성 피지선 과활성 시사'], emoji:'😷' },
-  { id:8,  diag:'Rosacea',              diagKo:'주사',            disease:'rosacea',    date:'2026-03-28', conf:58, correct:false, myAnswer:'Seborrheic Dermatitis',          findings:['홍조 및 안면홍조 반복적으로 발생','눈 주위 충혈 동반 안구 주사 가능성','자극 요인(주류·온도변화) 회피 필요'], emoji:'🌹' },
-  { id:9,  diag:'Eczema',              diagKo:'습진',             disease:'eczema',     date:'2026-03-25', conf:76, correct:true,  myAnswer:'Eczema',                         findings:['급성기 수포 및 진물 소견','접촉성 또는 자극성 원인 가능성','항히스타민제 및 스테로이드 연고 처방 필요'], emoji:'💧' },
-  { id:10, diag:'Melasma',             diagKo:'기미',             disease:'melasma',    date:'2026-03-20', conf:61, correct:false, myAnswer:'Solar Lentigo',                  findings:['양뺨 대칭성 색소 침착, 경계 불명확','자외선 노출력 강함','하이드로퀴논·레티노이드 치료 고려'], emoji:'🟤' },
-  { id:11, diag:'Psoriasis',           diagKo:'건선',             disease:'psoriasis',  date:'2026-03-17', conf:84, correct:true,  myAnswer:'Psoriasis',                      findings:['팔꿈치 전형적인 플라크 병변','인설 제거 시 점상출혈 (오스피츠 징후)','TNF-α 억제제 고려 대상'], emoji:'⚪' },
-  { id:12, diag:'Seborrheic Dermatitis',diagKo:'지루성 피부염',   disease:'seborrheic', date:'2026-03-14', conf:79, correct:true,  myAnswer:'Seborrheic Dermatitis',          findings:['두피 비듬 및 가려움증 동반','항진균 샴푸 치료 효과적','스트레스 악화 요인 확인'], emoji:'🟡' },
-];
+// ── 실제 API 데이터 ──────────────────────────────────────────
+let allRecords = [];
+
+function toDisplayRecord(r) {
+  const conf = r.confidence != null ? Math.round(r.confidence * 100) : 0;
+  const info = (typeof DISEASE_MAP !== 'undefined' && DISEASE_MAP[r.primary_diagnosis])
+    || { ko: r.primary_diagnosis || '미분류', en: r.primary_diagnosis || '' };
+  let findings = [];
+  try {
+    const rep = r.ai_findings ? JSON.parse(r.ai_findings) : null;
+    if (rep) {
+      if (rep.summary)  findings.push(rep.summary);
+      if (rep.features) findings.push(rep.features);
+    }
+  } catch {}
+  return {
+    id:       r.record_id,
+    diag:     info.en,
+    diagKo:   info.ko,
+    disease:  r.primary_diagnosis || 'unknown',
+    date:     r.created_at ? r.created_at.slice(0, 10) : '-',
+    conf,
+    correct:  r.is_correct === true,
+    answered: r.user_answer != null,
+    myAnswer: r.user_answer || '',
+    findings,
+    imageUrl: r.image_url || null,
+  };
+}
+
+async function loadRecords() {
+  const list = document.getElementById('recordList');
+  if (list) list.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;font-size:14px;">기록을 불러오는 중...</div>';
+  try {
+    const res = await apiFetch('/api/records');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { records } = await res.json();
+    allRecords = records.map(toDisplayRecord);
+  } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') return;
+    console.error('기록 로드 실패:', err);
+    if (list) list.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626;font-size:14px;">기록을 불러오지 못했습니다.</div>';
+    return;
+  }
+  applyFilters();
+  renderChart();
+  renderWeakList();
+  renderStreak();
+}
 
 // diseaseLabels: disease_map.js의 DISEASE_MAP을 우선 사용. mock 데이터의 legacy 키(rosacea/eczema/melasma 등)는 fallback으로 보존
 const LEGACY_LABELS = { acne:'여드름', rosacea:'주사', seborrheic:'지루성 피부염', eczema:'습진', psoriasis:'건선', melasma:'기미' };
@@ -570,15 +605,15 @@ function renderList(records) {
     list.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">해당 조건의 기록이 없습니다</div></div>`;
   } else {
     list.innerHTML = paged.map((r, i) => `
-      <div class="record-item" style="animation-delay:${i * 0.05}s" onclick="openModal(${r.id})">
-        <div class="record-thumb">${r.emoji}</div>
+      <div class="record-item" style="animation-delay:${i * 0.05}s" onclick="openModal('${r.id}')">
+        <div class="record-thumb">${r.imageUrl ? `<img src="${r.imageUrl}" alt="${r.diagKo}">` : '🔬'}</div>
         <div class="record-body">
           <div class="record-top">
             <span class="record-diag">${r.diag}</span>
             <span class="record-diag-ko">${r.diagKo}</span>
           </div>
           <div class="record-tags">
-            <span class="tag ${r.correct ? 'correct' : 'wrong'}">${r.correct ? '✓ 정답' : '✗ 오답'}</span>
+            ${r.answered ? `<span class="tag ${r.correct ? 'correct' : 'wrong'}">${r.correct ? '✓ 정답' : '✗ 오답'}</span>` : ''}
             <span class="tag disease">${diseaseLabels[r.disease] || r.disease}</span>
             <span class="tag date-tag">${r.date}</span>
           </div>
@@ -619,23 +654,7 @@ function renderRing(pct) {
 
 // ── 모달 ─────────────────────────────────────────────────────
 function openModal(id) {
-  const r = allRecords.find(x => x.id === id);
-  if (!r) return;
-  document.getElementById('modalTitle').textContent = `${r.diag} 상세`;
-  document.getElementById('modalDate').textContent  = r.date + ' 분석';
-  document.getElementById('modalImg').textContent   = r.emoji;
-  document.getElementById('modalDiagName').textContent = r.diag;
-  document.getElementById('modalDiagKo').textContent   = r.diagKo;
-  const conf = document.getElementById('modalConf');
-  conf.textContent = `신뢰도 ${r.conf}%`;
-  conf.className = `modal-conf ${r.correct ? '' : 'wrong'}`;
-  const myAns = document.getElementById('modalMyAns');
-  myAns.className = `modal-my-ans ${r.correct ? 'correct' : 'wrong'}`;
-  document.getElementById('modalMyAnsVal').textContent = `${r.myAnswer}  ${r.correct ? '✓ 정답' : '✗ 오답'}`;
-  document.getElementById('modalFindings').innerHTML = r.findings.map(f =>
-    `<div class="modal-finding"><div class="modal-finding-dot"></div>${f}</div>`).join('');
-  document.getElementById('modalOverlay').classList.add('show');
-  document.body.style.overflow = 'hidden';
+  window.location.href = 'record_detail.html?id=' + id;
 }
 
 function closeModal(e) {
@@ -687,10 +706,7 @@ function renderStreak() {
 }
 
 // ── 초기화 ───────────────────────────────────────────────────
-applyFilters();
-renderChart();
-renderWeakList();
-renderStreak();
+loadRecords();
 </script>
 <script src="../src/transition.js"></script>
 </body>
