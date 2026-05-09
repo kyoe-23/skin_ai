@@ -40,7 +40,10 @@ logger = logging.getLogger(__name__)
 
 # ── 상수 ─────────────────────────────────────────────────────────
 PLOT_DPI = 150
-ROC_COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD"]
+ROC_COLORS = [
+    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD",
+    "#F7DC6F", "#A569BD", "#5DADE2", "#48C9B0", "#F0B27A",
+]
 DEFAULT_OUTPUT_DIR = os.getenv("EVAL_OUTPUT_DIR", "ai/testing/eval_results")
 DEFAULT_SPLIT = "val"
 PLATFORM_DARWIN = "Darwin"
