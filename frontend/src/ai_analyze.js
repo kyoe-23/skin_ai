@@ -166,7 +166,7 @@ async function startAnalyze() {
     loadingCard.style.display = 'none';
 
     if (!apiResult.valid) {
-      showError(apiResult.reason || '분석 가능한 안면부 피부 질환 이미지가 아닙니다.');
+      showError(apiResult.reason || '분석 가능한 피부 질환 이미지가 아닙니다.');
     } else {
       lastApiResult = { ...apiResult, imageUrl };
       renderResult(apiResult);

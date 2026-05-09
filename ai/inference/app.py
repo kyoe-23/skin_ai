@@ -454,7 +454,7 @@ def predict():
             if below_floor:
                 prediction["message"] = (
                     "분석 가능한 피부질환 이미지가 아니거나 신뢰도가 매우 낮습니다. "
-                    "안면부 피부 병변이 명확히 보이는 이미지로 재시도해 주세요."
+                    "피부 병변이 명확히 보이는 이미지로 재시도해 주세요."
                 )
             else:
                 prediction["message"] = "신뢰도 부족 — 재촬영 권장"

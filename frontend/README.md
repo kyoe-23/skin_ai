@@ -1,25 +1,30 @@
-# SkinAI — 안면부 피부질환 AI 분류 학습 플랫폼
+# SkinAI — 피부질환 AI 분류 학습 플랫폼
 
-> 피부과 전공의 · 의대생을 위한 안면부 피부질환 AI 분류 학습 및 실습 보조 플랫폼
+> 피부과 전공의 · 의대생을 위한 피부질환 AI 분류 학습 및 실습 보조 플랫폼
 
 ---
 
 ## 프로젝트 소개
 
-SkinAI는 안면부 피부질환 6종(건선, 아토피 피부염, 여드름, 주사, 지루성 피부염, 정상)을 대상으로 이미지를 업로드하면 AI가 질환을 분류하고, Claude API + RAG를 통해 감별진단 설명 및 학습 피드백을 제공하는 플랫폼입니다.
+SkinAI는 피부질환 11종을 대상으로 이미지를 업로드하면 AI가 질환을 분류하고, Claude API + RAG를 통해 감별진단 설명 및 학습 피드백을 제공하는 플랫폼입니다. AI Hub DS_unified(DS14 안면 3종 + DS15 피부암류 8종)로 학습되어 안면부에 한정되지 않습니다.
 
 ---
 
-## 대상 질환 6종
+## 대상 질환 11종
 
 | No | 질환명 (한글) | 질환명 (영문) |
 |----|--------------|--------------|
 | 1 | 건선 | Psoriasis |
-| 2 | 아토피 피부염 | Atopic Dermatitis |
+| 2 | 아토피피부염 | Atopic Dermatitis |
 | 3 | 여드름 | Acne Vulgaris |
-| 4 | 주사 | Rosacea |
-| 5 | 지루성 피부염 | Seborrheic Dermatitis |
-| 6 | 정상 | Normal |
+| 4 | 광선각화증 | Actinic Keratosis |
+| 5 | 기저세포암 | Basal Cell Carcinoma |
+| 6 | 멜라닌세포모반 | Melanocytic Nevi |
+| 7 | 악성흑색종 | Melanoma |
+| 8 | 지루각화증 | Seborrheic Keratosis |
+| 9 | 편평세포암 | Squamous Cell Carcinoma |
+| 10 | 피부섬유종 | Dermatofibroma |
+| 11 | 혈관종 | Vascular Lesion |
 
 ---
 
