@@ -20,6 +20,26 @@ DEFAULT_MAX_TOKENS = 1024
 DEFAULT_TIMEOUT_SEC = 30
 CONFIDENCE_LOW_THRESHOLD = 0.70   # 이 미만은 '불확실' 어조 강화
 
+
+def _extract_json_object(text: str) -> str:
+    """LLM 응답에서 JSON 객체 부분만 추출.
+
+    Claude가 시스템 프롬프트의 "코드블록 없이 JSON만" 지시를 어기고
+    ```json ... ``` 으로 감싸거나 "Here is the JSON:" 같은 프리픽스를
+    덧붙이는 경우가 있어, 첫 '{' 와 마지막 '}' 사이만 추출한다.
+
+    Args:
+        text: LLM 원문 응답
+
+    Returns:
+        JSON 추출 시도 후의 문자열 (실패 시 원문 그대로)
+    """
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return text
+    return text[start : end + 1]
+
 # ── 모듈 전역 클라이언트 (성능: 매 요청마다 재생성 금지) ────────
 _client: Optional[anthropic.Anthropic] = None
 
@@ -128,12 +148,16 @@ def generate_report(prediction: dict, clinical_ref: Optional[dict]) -> Optional[
             f"[LLM] 리포트 생성 완료: "
             f"input_tokens={response.usage.input_tokens}, "
             f"output_tokens={response.usage.output_tokens}, "
-            f"cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)}"
+            f"cache_read={getattr(response.usage, 'cache_read_input_tokens', 0)}, "
+            f"stop_reason={response.stop_reason}"
         )
-        return json.loads(text)
+        # 코드블록·프리픽스 텍스트가 섞여 들어와도 JSON 본문만 추출 후 파싱
+        return json.loads(_extract_json_object(text))
     except json.JSONDecodeError as e:
-        logger.warning(f"[LLM] JSON 파싱 실패 — 원문 폴백 사용: error={e}")
-        return {"summary": text, "features": "", "advice": "", "disclaimer": "본 분석은 참고용이며, 피부과 전문의 진료가 필요합니다."}
+        # text가 비어있거나 추출 실패한 경우까지 graceful 처리
+        logger.warning(f"[LLM] JSON 파싱 실패 — 원문 폴백 사용: error={e}, output_len={len(text) if 'text' in locals() else 0}")
+        fallback = text if 'text' in locals() and text else "(LLM 응답 없음)"
+        return {"summary": fallback, "features": "", "advice": "", "disclaimer": "본 분석은 참고용이며, 피부과 전문의 진료가 필요합니다."}
     except anthropic.APIError as e:
         logger.error(f"[LLM] Claude API 오류: error={e}")
         return None
