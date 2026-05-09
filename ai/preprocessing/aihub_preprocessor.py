@@ -27,11 +27,11 @@ import pandas as pd
 from tqdm import tqdm
 
 # ── 상수 ─────────────────────────────────────────────────────────
-CLASS_MAP = {
+# DS14 fallback (--class_map_file 미지정 시 사용). 다른 데이터셋은 JSON 지정 필수.
+DEFAULT_DS14_CLASS_MAP = {
     "건선": 0, "아토피피부염": 1, "여드름": 2,
     "주사": 3, "지루피부염": 4, "정상": 5,
 }
-IDX_TO_CLASS = {v: k for k, v in CLASS_MAP.items()}
 
 # ZIP명 두 번째 세그먼트 → 정식 클래스명 정규화
 CLASS_NAME_ALIASES = {
@@ -57,13 +57,32 @@ logger = logging.getLogger(__name__)
 
 # ── 헬퍼 ─────────────────────────────────────────────────────────
 
-def _parse_zip_name(zip_name: str) -> Optional[dict]:
+def _load_class_map(class_map_file: Optional[str]) -> dict:
+    """클래스명 → 인덱스 JSON 로드. 미지정 시 DS14 6종 fallback.
+
+    Args:
+        class_map_file: JSON 파일 경로. 형식: {"클래스명": 인덱스, ...}
+
+    Returns:
+        dict: {class_name: class_idx}
+    """
+    if class_map_file is None:
+        logger.info("[INFO] class_map_file 미지정 — DS14 6종 fallback 사용")
+        return dict(DEFAULT_DS14_CLASS_MAP)
+    with open(class_map_file, "r", encoding="utf-8") as f:
+        loaded = json.load(f)
+    logger.info(f"[INFO] class_map 로드: {len(loaded)}종 ({class_map_file})")
+    return loaded
+
+
+def _parse_zip_name(zip_name: str, class_map: dict) -> Optional[dict]:
     """ZIP 파일명에서 클래스명과 방향 추출.
 
     형식: TS_건선_정면.zip  (접두사_클래스_방향.zip)
 
     Args:
         zip_name: ZIP 파일명 (확장자 포함)
+        class_map: 허용 클래스 매핑
 
     Returns:
         dict | None: {'class_name': str, 'direction': str} 또는 파싱 실패 시 None
@@ -77,7 +96,7 @@ def _parse_zip_name(zip_name: str) -> Optional[dict]:
     raw_direction = parts[2]
 
     class_name = CLASS_NAME_ALIASES.get(raw_class, raw_class)
-    if class_name not in CLASS_MAP:
+    if class_name not in class_map:
         logger.warning(f"[WARN] 알 수 없는 클래스: '{raw_class}' (파일: {zip_name})")
         return None
 
@@ -172,12 +191,14 @@ class AIHubPreprocessor:
     Args:
         data_root: dataset_14/ 폴더 경로
         output_dir: 출력 CSV 저장 경로
+        class_map: 클래스명 → 인덱스 매핑 (None이면 DS14 6종 fallback)
     """
 
-    def __init__(self, data_root: str, output_dir: str):
+    def __init__(self, data_root: str, output_dir: str, class_map: Optional[dict] = None):
         self.data_root = Path(data_root)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.class_map = class_map if class_map is not None else dict(DEFAULT_DS14_CLASS_MAP)
 
     def run(self):
         """전체 전처리 파이프라인 실행."""
@@ -217,7 +238,7 @@ class AIHubPreprocessor:
             logger.info(f"[INFO] {split_dir_name}: {len(raw_zips)}개 원천 ZIP 발견")
 
             for raw_zip in tqdm(raw_zips, desc=f"  {split}", unit="ZIP"):
-                parsed = _parse_zip_name(raw_zip.name)
+                parsed = _parse_zip_name(raw_zip.name, self.class_map)
                 if parsed is None:
                     continue
 
@@ -248,7 +269,7 @@ class AIHubPreprocessor:
                         "zip_path": str(raw_zip.resolve()),
                         "filename": filename,
                         "class_name": class_name,
-                        "class_idx": CLASS_MAP[class_name],
+                        "class_idx": self.class_map[class_name],
                         "split": split,
                         "direction": direction,
                         "gender": meta.get("gender", ""),
@@ -274,7 +295,7 @@ class AIHubPreprocessor:
         before = len(df)
 
         # 알 수 없는 클래스 제거
-        max_class_idx = len(CLASS_MAP) - 1
+        max_class_idx = len(self.class_map) - 1
         valid_mask = df["class_idx"].between(0, max_class_idx)
         invalid = (~valid_mask).sum()
         if invalid:
@@ -312,8 +333,8 @@ class AIHubPreprocessor:
             [d for d in split_dfs.values() if len(d) > 0], ignore_index=True
         )
         metadata = {
-            "num_classes": len(CLASS_MAP),
-            "class_map": CLASS_MAP,
+            "num_classes": len(self.class_map),
+            "class_map": self.class_map,
             "splits": {name: len(d) for name, d in split_dfs.items()},
             "class_distribution": {
                 split: all_df[all_df["split"] == split]["class_name"]
@@ -345,19 +366,25 @@ class AIHubPreprocessor:
 # ── 진입점 ────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="AI Hub 08-14 전처리")
+    parser = argparse.ArgumentParser(description="AI Hub 08-14 / 08-15 전처리")
     parser.add_argument(
         "--data_root", default="data/dataset_14",
-        help="dataset_14/ 폴더 경로 (기본: data/dataset_14)",
+        help="dataset_14/ 또는 dataset_15/ 폴더 경로 (기본: data/dataset_14)",
     )
     parser.add_argument(
         "--output_dir", default="data/processed/DS14",
         help="출력 CSV 저장 경로 (기본: data/processed/DS14)",
     )
+    parser.add_argument(
+        "--class_map_file", default=None,
+        help="클래스명→인덱스 JSON 경로. 미지정 시 DS14 6종 fallback. "
+             "예: ai/preprocessing/class_maps/ds15_class_idx_map.json",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    preprocessor = AIHubPreprocessor(args.data_root, args.output_dir)
+    class_map = _load_class_map(args.class_map_file)
+    preprocessor = AIHubPreprocessor(args.data_root, args.output_dir, class_map=class_map)
     preprocessor.run()
 
 

@@ -38,9 +38,12 @@ logger = logging.getLogger(__name__)
 _WORKER_ZIP_CACHE: dict = {}
 
 # ── 상수 ─────────────────────────────────────────────────────────
+# DS_unified 11종. 모든 production CSV는 class_idx 컬럼을 포함하므로
+# 이 매핑은 class_idx 없는 레거시 CSV에 대한 graceful fallback 용도로만 사용.
 CLASS_MAP = {
     "건선": 0, "아토피피부염": 1, "여드름": 2,
-    "주사": 3, "지루피부염": 4, "정상": 5,
+    "광선각화증": 3, "기저세포암": 4, "멜라닌세포모반": 5, "악성흑색종": 6,
+    "지루각화증": 7, "편평세포암": 8, "피부섬유종": 9, "혈관종": 10,
 }
 IDX_TO_CLASS = {v: k for k, v in CLASS_MAP.items()}
 

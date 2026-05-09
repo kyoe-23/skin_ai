@@ -93,10 +93,11 @@ DERMNET_CLASS_MAP: dict[str, str | None] = {
     "Warts Molluscum and other Viral Infections": None,
 }
 
-# DS14 6종 기본 클래스 인덱스 맵 (--class_idx_map_file 미지정 시 사용)
-CLASS_IDX_MAP_6: dict[str, int] = {
+# DS_unified 11종 기본 클래스 인덱스 맵 (--class_idx_map_file 미지정 시 사용)
+CLASS_IDX_MAP_DEFAULT: dict[str, int] = {
     "건선": 0, "아토피피부염": 1, "여드름": 2,
-    "주사": 3, "지루피부염": 4, "정상": 5,
+    "광선각화증": 3, "기저세포암": 4, "멜라닌세포모반": 5, "악성흑색종": 6,
+    "지루각화증": 7, "편평세포암": 8, "피부섬유종": 9, "혈관종": 10,
 }
 
 VALID_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
@@ -117,9 +118,9 @@ def _load_class_map(class_map_file: str | None) -> dict[str, str | None]:
 
 
 def _load_class_idx_map(class_idx_map_file: str | None) -> dict[str, int]:
-    """클래스명 → 인덱스 매핑 JSON 로드. 없으면 CLASS_IDX_MAP_6 반환."""
+    """클래스명 → 인덱스 매핑 JSON 로드. 없으면 CLASS_IDX_MAP_DEFAULT(11종) 반환."""
     if class_idx_map_file is None:
-        return CLASS_IDX_MAP_6
+        return CLASS_IDX_MAP_DEFAULT
     try:
         with open(class_idx_map_file, "r", encoding="utf-8") as f:
             return {k: int(v) for k, v in json.load(f).items()}
@@ -398,7 +399,7 @@ def main() -> None:
     parser.add_argument("--class_map_file", default=None,
                         help="폴더명 → 클래스명 JSON (기본: DERMNET_CLASS_MAP)")
     parser.add_argument("--class_idx_map_file", default=None,
-                        help="클래스명 → 인덱스 JSON (기본: DS14 6종 CLASS_IDX_MAP_6)")
+                        help="클래스명 → 인덱스 JSON (기본: DS_unified 11종 CLASS_IDX_MAP_DEFAULT)")
     parser.add_argument("--flat", action="store_true",
                         help="flat 구조 모드 — train/test 서브디렉토리 없이 {root_dir}/{LABEL}/ 직접 스캔 (ISIC 2019)")
     parser.add_argument("--metadata_csv", default=None,

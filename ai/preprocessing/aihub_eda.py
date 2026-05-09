@@ -5,6 +5,7 @@
 """
 
 import argparse
+import json
 import platform
 from pathlib import Path
 
@@ -15,9 +16,32 @@ import matplotlib.font_manager as fm
 import numpy as np
 import pandas as pd
 
-CLASS_NAMES = ["건선", "아토피피부염", "여드름", "주사", "지루피부염", "정상"]
-COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD"]
+# DS14/DS15/unified 어떤 데이터셋이든 지원하도록 metadata.json에서 동적 로드.
+# metadata.json 부재 시 CSV의 class_name 고유값으로 fallback.
+DEFAULT_DS14_CLASS_NAMES = ["건선", "아토피피부염", "여드름", "주사", "지루피부염", "정상"]
+COLORS = [
+    "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD",
+    "#F7DC6F", "#A569BD", "#5DADE2", "#48C9B0", "#F0B27A",
+    "#E59866", "#82E0AA", "#F1948A", "#85C1E9",
+]
 VALID_SPLITS = ["train", "val", "test"]
+
+
+def _resolve_class_names(processed_dir: Path, df: pd.DataFrame) -> list:
+    """metadata.json 또는 CSV로부터 클래스명 리스트 추론 (인덱스 순)."""
+    meta_path = processed_dir / "metadata.json"
+    if meta_path.exists():
+        with open(meta_path, encoding="utf-8") as f:
+            meta = json.load(f)
+        # build_unified_dataset.py: 'classes', AIHub 전처리: 'class_map'
+        class_dict = meta.get("class_map") or meta.get("classes")
+        if class_dict:
+            return sorted(class_dict, key=lambda k: class_dict[k])
+    # fallback: CSV의 class_idx 순서
+    if "class_idx" in df.columns and "class_name" in df.columns:
+        ordered = df.drop_duplicates("class_idx").sort_values("class_idx")
+        return ordered["class_name"].tolist()
+    return list(DEFAULT_DS14_CLASS_NAMES)
 
 
 def setup_korean_font():
@@ -56,17 +80,17 @@ def load_data(processed_dir: Path) -> pd.DataFrame:
     return pd.concat(dfs, ignore_index=True)
 
 
-def plot_class_distribution(df: pd.DataFrame, output_dir: Path):
+def plot_class_distribution(df: pd.DataFrame, output_dir: Path, class_names: list):
     """클래스별 이미지 수 막대 그래프 (split 구분)."""
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(max(12, len(class_names) * 1.2), 6))
 
     splits = VALID_SPLITS
-    x = np.arange(len(CLASS_NAMES))
+    x = np.arange(len(class_names))
     width = 0.25
 
     for i, split in enumerate(splits):
         split_df = df[df["split"] == split]
-        counts = [len(split_df[split_df["class_name"] == c]) for c in CLASS_NAMES]
+        counts = [len(split_df[split_df["class_name"] == c]) for c in class_names]
         bars = ax.bar(x + i * width, counts, width, label=split, color=COLORS[i])
         for bar, count in zip(bars, counts):
             if count > 0:
@@ -77,7 +101,7 @@ def plot_class_distribution(df: pd.DataFrame, output_dir: Path):
     ax.set_ylabel("이미지 수")
     ax.set_title("클래스별 이미지 분포")
     ax.set_xticks(x + width)
-    ax.set_xticklabels(CLASS_NAMES)
+    ax.set_xticklabels(class_names, rotation=45, ha="right")
     ax.legend()
     ax.grid(axis="y", alpha=0.3)
 
@@ -87,7 +111,7 @@ def plot_class_distribution(df: pd.DataFrame, output_dir: Path):
     print("  → class_distribution.png")
 
 
-def plot_gender_distribution(df: pd.DataFrame, output_dir: Path):
+def plot_gender_distribution(df: pd.DataFrame, output_dir: Path, class_names: list):
     """성별 분포 (전체 + 클래스별)."""
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
@@ -102,7 +126,7 @@ def plot_gender_distribution(df: pd.DataFrame, output_dir: Path):
 
     gender_class = pd.crosstab(df["class_name"], df["gender"])
     if len(gender_class) > 0:
-        gender_class.reindex(CLASS_NAMES).plot(kind="barh", stacked=True, ax=axes[1],
+        gender_class.reindex(class_names).plot(kind="barh", stacked=True, ax=axes[1],
                                                 color=COLORS[:gender_class.shape[1]])
         axes[1].set_title("클래스별 성별 분포")
         axes[1].set_xlabel("이미지 수")
@@ -115,7 +139,7 @@ def plot_gender_distribution(df: pd.DataFrame, output_dir: Path):
     print("  → gender_distribution.png")
 
 
-def plot_age_distribution(df: pd.DataFrame, output_dir: Path):
+def plot_age_distribution(df: pd.DataFrame, output_dir: Path, class_names: list):
     """연령대 분포."""
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
@@ -131,7 +155,7 @@ def plot_age_distribution(df: pd.DataFrame, output_dir: Path):
 
     age_class = pd.crosstab(df["class_name"], df["age_range"])
     if len(age_class) > 0:
-        age_class.reindex(CLASS_NAMES).plot(kind="barh", stacked=True, ax=axes[1])
+        age_class.reindex(class_names).plot(kind="barh", stacked=True, ax=axes[1])
         axes[1].set_title("클래스별 연령대 분포")
         axes[1].set_xlabel("이미지 수")
     else:
@@ -208,14 +232,17 @@ def _load_image_from_zip(zip_path: str, filename: str):
     return None
 
 
-def plot_sample_grid(df: pd.DataFrame, output_dir: Path):
+def plot_sample_grid(df: pd.DataFrame, output_dir: Path, class_names: list):
     """클래스별 샘플 이미지 그리드 (ZIP에서 직접 로드)."""
     SAMPLES_PER_CLASS = 6
-    fig, axes = plt.subplots(6, SAMPLES_PER_CLASS, figsize=(18, 18))
+    n_rows = len(class_names)
+    fig, axes = plt.subplots(n_rows, SAMPLES_PER_CLASS, figsize=(18, 3 * n_rows))
+    if n_rows == 1:
+        axes = np.array([axes])
 
     has_zip = "zip_path" in df.columns and "filename" in df.columns
 
-    for row_idx, class_name in enumerate(CLASS_NAMES):
+    for row_idx, class_name in enumerate(class_names):
         class_df = df[df["class_name"] == class_name]
         samples = class_df.head(SAMPLES_PER_CLASS)
 
@@ -262,13 +289,16 @@ def run_eda(processed_dir: str):
     df = load_data(processed_dir)
     print(f"  → 총 {len(df)}건 로드")
 
+    class_names = _resolve_class_names(processed_dir, df)
+    print(f"  → 클래스 {len(class_names)}종: {class_names}")
+
     print("\n시각화 생성 중...")
-    plot_class_distribution(df, output_dir)
-    plot_gender_distribution(df, output_dir)
-    plot_age_distribution(df, output_dir)
+    plot_class_distribution(df, output_dir, class_names)
+    plot_gender_distribution(df, output_dir, class_names)
+    plot_age_distribution(df, output_dir, class_names)
     plot_atopy_severity(df, output_dir)
     plot_acne_lesion_type(df, output_dir)
-    plot_sample_grid(df, output_dir)
+    plot_sample_grid(df, output_dir, class_names)
 
     print(f"\n✅ EDA 완료. 결과: {output_dir}/")
 

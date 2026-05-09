@@ -46,9 +46,13 @@ _BACKBONE_DEFAULTS = {
     },
 }
 
-# ── 공유 상수 (DS14 6종 기본값 — metadata.json 로드 시 덮어씀) ────
-NUM_CLASSES = 6
-CLASS_NAMES = ["건선", "아토피피부염", "여드름", "주사", "지루피부염", "정상"]
+# ── 공유 상수 (DS_unified 11종 기본값 — metadata.json 로드 시 덮어씀) ────
+NUM_CLASSES = 11
+CLASS_NAMES = [
+    "건선", "아토피피부염", "여드름",
+    "광선각화증", "기저세포암", "멜라닌세포모반", "악성흑색종",
+    "지루각화증", "편평세포암", "피부섬유종", "혈관종",
+]
 
 
 @dataclass
@@ -60,7 +64,7 @@ class ClassifyConfig:
     """
 
     # ── 데이터 ──────────────────────────────────────────────────
-    data_dir: str = field(default_factory=lambda: _env_str("DATA_DIR", "data/processed/DS14"))
+    data_dir: str = field(default_factory=lambda: _env_str("DATA_DIR", "data/processed/unified"))
     num_classes: int = field(default_factory=lambda: _env_int("NUM_CLASSES", NUM_CLASSES))
     class_names: list = field(default_factory=lambda: list(CLASS_NAMES))
 

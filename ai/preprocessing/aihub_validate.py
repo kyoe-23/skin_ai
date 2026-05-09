@@ -20,7 +20,7 @@ REQUIRED_SPLITS = ["train", "val"]
 OPTIONAL_SPLITS = ["test"]
 
 REQUIRED_COLUMNS = ["zip_path", "filename", "class_idx", "class_name", "split"]
-VALID_LABEL_RANGE = (0, 5)
+DEFAULT_NUM_CLASSES_FALLBACK = 6  # metadata.json 부재 시 fallback (DS14)
 BALANCE_THRESHOLD = 0.8
 SAMPLE_RATIO = 0.1
 
@@ -128,10 +128,20 @@ def _check_images(dfs: dict, report: dict):
             print(f"  ❌ {split}: {fail}/{len(sample)} 손상 또는 누락")
 
 
-def _check_label_range(dfs: dict, report: dict):
-    """label 범위 확인."""
-    low, high = VALID_LABEL_RANGE
-    print(f"\n[4/6] label 범위 확인 ({low}~{high})...")
+def _resolve_num_classes(processed_dir: Path) -> int:
+    """metadata.json 또는 CSV의 class_idx에서 num_classes 추론."""
+    meta_path = processed_dir / "metadata.json"
+    if meta_path.exists():
+        with open(meta_path, encoding="utf-8") as f:
+            meta = json.load(f)
+        return int(meta.get("num_classes", DEFAULT_NUM_CLASSES_FALLBACK))
+    return DEFAULT_NUM_CLASSES_FALLBACK
+
+
+def _check_label_range(dfs: dict, report: dict, num_classes: int):
+    """label 범위 확인 — [0, num_classes-1]."""
+    low, high = 0, num_classes - 1
+    print(f"\n[4/6] label 범위 확인 ({low}~{high}, num_classes={num_classes})...")
 
     for split, df in dfs.items():
         min_label = int(df["class_idx"].min())
@@ -191,9 +201,11 @@ def validate(processed_dir: str) -> bool:
         print("\n검증할 CSV가 없습니다.")
         return False
 
+    num_classes = _resolve_num_classes(processed_dir)
+
     _check_class_balance(dfs, report)
     _check_images(dfs, report)
-    _check_label_range(dfs, report)
+    _check_label_range(dfs, report, num_classes)
     _check_required_columns(dfs, report)
 
     # 결과 요약
