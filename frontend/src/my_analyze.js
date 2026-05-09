@@ -27,7 +27,7 @@ function toDisplayRecord(r) {
 }
 
 async function loadRecords() {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (!token) {
     document.getElementById('recordList').innerHTML =
       `<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">로그인이 필요합니다</div><div class="empty-text">로그인 후 내 분석 기록을 확인할 수 있습니다</div></div>`;
@@ -35,13 +35,12 @@ async function loadRecords() {
   }
 
   try {
-    const res = await fetch('/api/records', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await apiFetch('/api/records');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { records } = await res.json();
     allRecords = records.map(toDisplayRecord);
   } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') return;
     console.error('기록 로드 실패:', err);
     document.getElementById('recordList').innerHTML =
       `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">기록을 불러오지 못했습니다</div></div>`;

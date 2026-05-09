@@ -91,13 +91,11 @@ function resetAll() {
 //  서버 업로드 (EXIF 제거·마스킹·Supabase·DB 는 서버에서 처리)
 // ──────────────────────────────────────────
 async function uploadImage(file) {
-  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   const formData = new FormData();
   formData.append('image', file);
 
-  const res = await fetch('/api/analyze/upload', {
+  const res = await apiFetch('/api/analyze/upload', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${token}` },
     body: formData
   });
 
@@ -110,10 +108,9 @@ async function uploadImage(file) {
 //  AI 분석 API 호출
 // ──────────────────────────────────────────
 async function callAnalyzeAPI(imageUrl) {
-  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-  const res = await fetch('/api/analyze/run', {
+  const res = await apiFetch('/api/analyze/run', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ imageUrl }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -177,6 +174,9 @@ async function startAnalyze() {
 
   } catch (err) {
     loadingCard.style.display = 'none';
+
+    // SESSION_EXPIRED 는 apiFetch가 이미 로그인 페이지로 리다이렉트 — 메시지 표시 불필요
+    if (err.message === 'SESSION_EXPIRED') return;
 
     if (err.message === 'API_NOT_CONNECTED') {
       showError('현재 AI 분석 서버가 연결되지 않았습니다. API 연결 후 이용해 주세요.');
@@ -286,17 +286,14 @@ function renderResult(data) {
 async function saveRecord() {
   if (!lastApiResult?.imageUrl) return;
 
-  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-  if (!token) { alert('로그인이 필요합니다.'); return; }
-
   const saveBtn = document.querySelector('.action-btn.primary[onclick="saveRecord()"]');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
 
   try {
     const primary = lastApiResult.primary;
-    const res = await fetch('/api/records', {
+    const res = await apiFetch('/api/records', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         image_url:         lastApiResult.imageUrl,
         primary_diagnosis: primary.nameKo,
@@ -310,6 +307,7 @@ async function saveRecord() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     alert('기록이 저장됐습니다.');
   } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') return;
     console.error('기록 저장 실패:', err);
     alert('저장 중 오류가 발생했습니다.');
   } finally {

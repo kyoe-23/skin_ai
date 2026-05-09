@@ -118,10 +118,10 @@ class ClassifyConfig:
             meta = json.load(f)
         if "num_classes" in meta:
             self.num_classes = meta["num_classes"]
-        if "class_map" in meta:
-            self.class_names = sorted(
-                meta["class_map"], key=lambda k: meta["class_map"][k]
-            )
+        # build_unified_dataset.py는 'classes' 키 사용, AIHub 전처리는 'class_map' 사용 — 둘 다 지원
+        class_dict = meta.get("class_map") or meta.get("classes")
+        if class_dict:
+            self.class_names = sorted(class_dict, key=lambda k: class_dict[k])
 
     def apply_backbone_defaults(self) -> None:
         """backbone에 따라 image_size, crop_size, batch_size, lr, warmup을 자동 설정.

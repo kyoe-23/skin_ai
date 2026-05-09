@@ -22,13 +22,11 @@ async function loadRecordDetail() {
   const id = new URLSearchParams(location.search).get('id');
   if (!id) return;
 
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (!token) return;
 
   try {
-    const res = await fetch(`/api/records/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await apiFetch(`/api/records/${id}`);
     if (!res.ok) return;
     const { record: r } = await res.json();
 
@@ -128,6 +126,7 @@ async function loadRecordDetail() {
 
     animateDiffBars();
   } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') return;
     console.error('기록 상세 로드 실패:', err);
   }
 }

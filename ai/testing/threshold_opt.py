@@ -26,7 +26,7 @@ from sklearn.metrics import f1_score, precision_score
 from ..training.classifier.config import ClassifyConfig
 from ..training.classifier.model import build_classifier
 from ..training.utils import get_device, resolve_num_workers
-from ..dataset.dataset import AihubFacialDataset, get_transforms, worker_init_fn, IDX_TO_CLASS
+from ..dataset.dataset import AihubFacialDataset, get_transforms, worker_init_fn
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +141,15 @@ def main():
     config.backbone = ckpt_config.get("backbone", config.backbone)
     if args.data_dir:
         config.data_dir = args.data_dir
+    # data_dir/metadata.json에서 num_classes/class_names 자동 로드 (DS14 6종 / unified 11종 등)
+    config.load_from_metadata()
+    # 체크포인트 config가 있으면 그것이 우선 (학습 당시 클래스 정보가 정답)
+    if ckpt_config.get("class_names"):
+        config.class_names = ckpt_config["class_names"]
+        config.num_classes = len(ckpt_config["class_names"])
+
+    # 체크포인트 클래스 정보 기반으로 idx_to_class 구성 — 글로벌 IDX_TO_CLASS(DS14 6종)에 의존하지 않음
+    idx_to_class = {idx: name for idx, name in enumerate(config.class_names)}
 
     model = build_classifier(config)
     model.load_state_dict(checkpoint["model_state_dict"])
@@ -183,7 +192,7 @@ def main():
     preds_after = []
     for i in range(len(probs)):
         pred_idx = probs[i].argmax()
-        pred_class = IDX_TO_CLASS[pred_idx]
+        pred_class = idx_to_class[pred_idx]
         pred_conf = probs[i, pred_idx]
         if pred_conf >= thresholds[pred_class]:
             preds_after.append(pred_idx)

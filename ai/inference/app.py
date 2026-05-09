@@ -73,6 +73,7 @@ ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
 
 SUPPORTED_BACKBONES = {"densenet121", "efficientnet_b3"}
 ATOPY_CLASS = "아토피피부염"   # severity_dist를 노출할 클래스
+DEFAULT_MIN_CONFIDENCE = 0.7   # OOD/저신뢰 케이스 거절용 글로벌 floor — .env의 MIN_CONFIDENCE로 override
 
 app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
 
@@ -430,12 +431,17 @@ def predict():
             for val, idx in zip(top_vals, top_idxs)
         ]
 
-        # threshold 미달 시 uncertain 표시 (thresholds.json 없으면 argmax)
-        uncertain = (
+        # uncertain 판정: (1) 글로벌 최소 신뢰도 floor + (2) 클래스별 thresholds.json
+        # (1)은 OOD(피부질환 아닌 이미지) 거절용 1차 가드 — softmax가 어떤 클래스에도 강한 확신이 없을 때
+        # (2)는 학습된 클래스 내에서 클래스별 정밀도/재현율 trade-off를 잡기 위한 정밀 임계값
+        min_confidence = float(os.environ.get("MIN_CONFIDENCE", str(DEFAULT_MIN_CONFIDENCE)))
+        below_floor = pred_conf < min_confidence
+        below_class_threshold = (
             _thresholds is not None
             and pred_class in _thresholds
             and pred_conf < _thresholds[pred_class]
         )
+        uncertain = below_floor or below_class_threshold
 
         prediction = {
             "class_name": pred_class,
@@ -445,7 +451,13 @@ def predict():
         }
         if uncertain:
             prediction["uncertain"] = True
-            prediction["message"] = "신뢰도 부족 — 재촬영 권장"
+            if below_floor:
+                prediction["message"] = (
+                    "분석 가능한 피부질환 이미지가 아니거나 신뢰도가 매우 낮습니다. "
+                    "안면부 피부 병변이 명확히 보이는 이미지로 재시도해 주세요."
+                )
+            else:
+                prediction["message"] = "신뢰도 부족 — 재촬영 권장"
 
         gradcam_b64 = _generate_gradcam(image, input_tensor)
         clinical_ref = _clinical_ref.get(pred_class) if _clinical_ref else None

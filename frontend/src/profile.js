@@ -325,7 +325,7 @@ async function exportData() {
   showToast('데이터를 준비하는 중...');
 
   try {
-    const res = await fetch('/api/analyze/records', { headers });
+    const res = await apiFetch('/api/analyze/records');
     if (!res.ok) throw new Error();
     const { records } = await res.json();
 
@@ -358,7 +358,8 @@ async function exportData() {
     URL.revokeObjectURL(url);
 
     showToast(`${records.length}개 기록을 내보냈어요`, 'success');
-  } catch {
+  } catch (err) {
+    if (err && err.message === 'SESSION_EXPIRED') return;
     showToast('데이터 내보내기에 실패했습니다', 'error');
   }
 }
@@ -379,7 +380,7 @@ async function confirmResetRecords() {
   btn.textContent = '삭제 중...';
 
   try {
-    const res = await fetch('/api/analyze/records', { method: 'DELETE', headers });
+    const res = await apiFetch('/api/analyze/records', { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
     if (!res.ok) throw new Error();
 
     closeModal('resetRecordsModal');
@@ -387,7 +388,8 @@ async function confirmResetRecords() {
 
     const statEl = document.getElementById('statAnalysisCount');
     if (statEl) statEl.textContent = '0';
-  } catch {
+  } catch (err) {
+    if (err && err.message === 'SESSION_EXPIRED') return;
     showToast('초기화에 실패했습니다', 'error');
     btn.disabled = false;
     btn.textContent = '초기화';

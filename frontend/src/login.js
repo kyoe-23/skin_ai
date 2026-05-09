@@ -1,5 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+  // ── 세션 만료로 자동 리다이렉트된 경우 안내 표시 ──
+  if (typeof consumeSessionExpiredFlag === 'function' && consumeSessionExpiredFlag()) {
+    document.getElementById('errorText').textContent = '세션이 만료되었습니다. 다시 로그인해주세요.';
+    document.getElementById('errorMsg').classList.add('show');
+  }
+
   // ── 비밀번호 보기 토글 ──
   document.getElementById('pwToggle').addEventListener('click', () => {
     const input = document.getElementById('pwInput');

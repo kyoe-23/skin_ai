@@ -69,12 +69,9 @@ async function handleWithdraw() {
   btn.disabled = true;
 
   try {
-    const res = await fetch('/api/auth/withdraw', {
+    const res = await apiFetch('/api/auth/withdraw', {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason: reasonValue, reasonDetail: reasonOther })
     });
 
@@ -93,6 +90,7 @@ async function handleWithdraw() {
     showDoneScreen();
 
   } catch (err) {
+    if (err && err.message === 'SESSION_EXPIRED') return;
     console.error(err);
     showToast('서버 연결에 실패했습니다. 다시 시도해주세요.', 'error');
     btn.classList.remove('loading');
