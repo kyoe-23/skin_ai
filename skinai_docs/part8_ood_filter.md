@@ -52,6 +52,30 @@ DenseNet 추론 실행 전, Haiku가 이미지를 보고 "사람 피부 사진�
 - ANTHROPIC_API_KEY와 LLM 서비스 인프라(llm_service.py)가 이미 프로젝트에 구성되어 있음
 - Haiku 모델 사용 시 추가 레이턴시 약 500~900ms로 수용 가능한 범위
 
+## 이미지 분석 아키텍처
+
+![SkinAI OOD Filter 아키텍처](assets/skinai_ood_architecture.svg)
+
+### 환경변수 ON/OFF 매트릭스
+
+| `LLM_ENABLED` | `OOD_CHECK_ENABLED` | OOD 필터 | LLM 리포트 |
+|---------------|---------------------|----------|------------|
+| false | (무관) | OFF | OFF |
+| true | false | OFF | ON |
+| true | true | **ON** | ON ← 권장 운영 |
+| true (API 오류) | true | pass-through | ON |
+
+### 레이턴시 분해
+
+| 단계 | 소요 시간 |
+|------|----------|
+| STEP 2 — Haiku OOD 판별 | 500 ~ 900 ms |
+| STEP 3 — 전처리 | ~10 ms |
+| STEP 4 — DenseNet 추론 | ~100 ms (CPU) / ~20 ms (GPU) |
+| STEP 5 — Grad-CAM | ~30 ms |
+| **합계 (OOD ON)** | **640 ~ 1,100 ms** |
+| **합계 (OOD OFF)** | **~140 ms** |
+
 ## 예외 처리
 
 | 상황 | 동작 |
