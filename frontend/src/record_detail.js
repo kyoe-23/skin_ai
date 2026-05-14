@@ -243,6 +243,22 @@ async function sendChat() {
 }
 
 
+// ── 기록 삭제 ────────────────────────────────────────
+async function deleteRecord() {
+  if (!_currentRecordId) return;
+  if (!confirm('이 분석 기록을 삭제하시겠습니까?')) return;
+
+  try {
+    const res = await apiFetch(`/api/records/${_currentRecordId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    location.href = 'my_analyze.html';
+  } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') return;
+    console.error('기록 삭제 실패:', err);
+    alert('기록 삭제에 실패했습니다.');
+  }
+}
+
 // ── 토스트 ───────────────────────────────────────────
 let toastTimer = null;
 function showToast(msg, type = '') {
