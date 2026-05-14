@@ -222,6 +222,7 @@ async function sendChat() {
         ${_AI_AVATAR_RD}
         <div style="background:#f8fafc;border:1px solid #e8eaed;color:#374151;padding:12px 16px;border-radius:4px 16px 16px 16px;font-size:13px;line-height:1.7;">${safeA}</div>
       </div>`);
+    messagesEl.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     const ts = new Date().toISOString();
     // 인메모리 이력에 누적 (다음 턴에 전달)
@@ -238,8 +239,8 @@ async function sendChat() {
         <div style="width:28px;height:28px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
         <div style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:4px 16px 16px 16px;font-size:13px;">오류가 발생했습니다. 다시 시도해주세요.</div>
       </div>`);
+    messagesEl.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
 

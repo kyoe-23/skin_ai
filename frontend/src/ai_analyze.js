@@ -255,10 +255,13 @@ function renderFindings(report) {
   if (report && (report.summary || report.features)) {
     findingEl.removeAttribute('data-loading');
     findingEl.innerHTML = [
-      report.summary    && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text">${report.summary}</div></div>`,
-      report.features   && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text">${report.features}</div></div>`,
-      report.advice     && `<div class="finding-item"><div class="finding-dot" style="background:#16a34a"></div><div class="finding-text">${report.advice}</div></div>`,
-      report.disclaimer && `<div class="finding-item" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;"><div class="finding-text" style="color:#92400e;font-size:12px;">${report.disclaimer}</div></div>`,
+      report.summary        && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text">${report.summary}</div></div>`,
+      report.mechanism      && `<div class="finding-item"><div class="finding-dot" style="background:#7c3aed"></div><div class="finding-text"><strong style="font-size:11px;color:#7c3aed;display:block;margin-bottom:2px;">발병 기전</strong>${report.mechanism}</div></div>`,
+      report.features       && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text"><strong style="font-size:11px;color:#2563eb;display:block;margin-bottom:2px;">임상 특징</strong>${report.features}</div></div>`,
+      report.triggers       && `<div class="finding-item"><div class="finding-dot" style="background:#d97706"></div><div class="finding-text"><strong style="font-size:11px;color:#d97706;display:block;margin-bottom:2px;">악화 요인</strong>${report.triggers}</div></div>`,
+      report.red_flags      && `<div class="finding-item" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;"><strong style="font-size:11px;color:#dc2626;display:block;margin-bottom:2px;">즉시 진료 신호</strong><div class="finding-text" style="color:#dc2626;">${report.red_flags}</div></div>`,
+      report.learning_point && `<div class="finding-item" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;"><strong style="font-size:11px;color:#16a34a;display:block;margin-bottom:2px;">핵심 학습 포인트</strong><div class="finding-text" style="color:#15803d;">${report.learning_point}</div></div>`,
+      report.disclaimer     && `<div class="finding-item" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;"><div class="finding-text" style="color:#92400e;font-size:12px;">${report.disclaimer}</div></div>`,
     ].filter(Boolean).join('');
   } else {
     findingEl.innerHTML = '<div style="font-size:13px;color:#c4cad4;padding:8px 0;">AI 소견이 없습니다 (LLM 비활성 상태)</div>';
@@ -415,6 +418,7 @@ async function sendChat() {
         ${_AI_AVATAR}
         <div style="background:#f8fafc;border:1px solid #e8eaed;color:#374151;padding:12px 16px;border-radius:4px 16px 16px 16px;font-size:13px;line-height:1.7;">${safeA}</div>
       </div>`);
+    messagesEl.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     chatHistory.push({ role: 'user', content: question, ts: new Date().toISOString() });
     chatHistory.push({ role: 'ai',   content: rawAnswer, ts: new Date().toISOString() });
   } catch {
@@ -424,8 +428,8 @@ async function sendChat() {
         <div style="width:28px;height:28px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
         <div style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:4px 16px 16px 16px;font-size:13px;">오류가 발생했습니다. 다시 시도해주세요.</div>
       </div>`);
+    messagesEl.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
 // ──────────────────────────────────────────
