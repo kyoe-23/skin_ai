@@ -165,12 +165,16 @@ def generate_report(prediction: dict, clinical_ref: Optional[dict]) -> Optional[
         return None
 
 
-def chat_response(question: str, context: dict) -> Optional[str]:
-    """진단 컨텍스트 기반 후속 질문 응답.
+CHAT_HISTORY_MAX = 20   # 최대 전달 턴 수 (초과분은 오래된 것부터 제거)
+
+
+def chat_response(question: str, context: dict, history: Optional[list] = None) -> Optional[str]:
+    """진단 컨텍스트 기반 멀티턴 후속 질문 응답.
 
     Args:
-        question: 사용자 질문
+        question: 현재 사용자 질문
         context: {class_name, confidence, report} 딕셔너리
+        history: 이전 대화 목록 [{role: "user"|"ai", content: str}, ...]
 
     Returns:
         str 응답 또는 None (LLM 비활성·실패 시).
@@ -187,20 +191,42 @@ def chat_response(question: str, context: dict) -> Optional[str]:
         "당신은 피부과 전문의를 보조하는 의료 AI 어시스턴트입니다. "
         "사용자의 피부 AI 분석 결과를 바탕으로 궁금한 점에 친절하고 간결하게 답변합니다. "
         "확정 진단·처방은 반드시 피부과 전문의에게 받도록 안내하세요. "
-        "약품명·복용량·구체적 처방은 언급하지 마세요."
+        "약품명·복용량·구체적 처방은 언급하지 마세요. "
+        "반드시 일반 텍스트로만 답변하세요. #, ##, **, *, - 등 마크다운 기호를 절대 사용하지 마세요."
     )
-    user_msg = (
+
+    # 첫 메시지에만 분석 결과 컨텍스트를 앞에 붙임 — 이후 턴은 질문만 전달
+    first_user_msg = (
         f"[분석 결과] 질환: {class_name}, 신뢰도: {confidence*100:.1f}%\n"
         f"[AI 소견 요약] {report.get('summary', '없음')}\n\n"
         f"[질문] {question}"
     )
+
+    # 이전 대화 이력을 Claude messages 형식으로 변환
+    # DB 저장 role: "user" / "ai" → Claude API role: "user" / "assistant"
+    prior = history or []
+    if len(prior) > CHAT_HISTORY_MAX * 2:
+        prior = prior[-(CHAT_HISTORY_MAX * 2):]
+
+    messages: list = []
+    for msg in prior:
+        role = "assistant" if msg.get("role") == "ai" else "user"
+        content = msg.get("content", "")
+        # 첫 번째 user 메시지에만 분석 컨텍스트가 들어있으므로 그대로 유지
+        messages.append({"role": role, "content": content})
+
+    # 현재 질문 추가 — 이력이 있으면 질문만, 없으면 컨텍스트 포함
+    if messages:
+        messages.append({"role": "user", "content": question})
+    else:
+        messages.append({"role": "user", "content": first_user_msg})
 
     try:
         response = client.messages.create(
             model=os.environ.get("LLM_MODEL_CHAT", DEFAULT_MODEL),
             max_tokens=512,
             system=system,
-            messages=[{"role": "user", "content": user_msg}],
+            messages=messages,
         )
         return response.content[0].text.strip()
     except anthropic.APIError as e:

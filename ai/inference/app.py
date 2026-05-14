@@ -502,13 +502,13 @@ def predict():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    """LLM 채팅 — 진단 컨텍스트 기반 후속 질문 처리."""
+    """LLM 채팅 — 진단 컨텍스트 기반 멀티턴 후속 질문 처리."""
     from llm_service import chat_response
     data = request.get_json(silent=True) or {}
     question = data.get("question", "").strip()
     if not question:
         return jsonify({"success": False, "error": "question이 필요합니다."}), 400
-    answer = chat_response(question, data.get("context", {}))
+    answer = chat_response(question, data.get("context", {}), data.get("history", []))
     if answer is None:
         return jsonify({"success": True, "answer": None, "enabled": False})
     return jsonify({"success": True, "answer": answer, "enabled": True})

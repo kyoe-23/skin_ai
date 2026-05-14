@@ -3,6 +3,7 @@
 // ── 전역 상태 ──
 let _currentRecordId = null;
 let _chatContext     = {};
+let _chatMessages    = [];   // 멀티턴용 인메모리 이력
 
 const _AI_AVATAR_RD = `<div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>`;
 
@@ -85,8 +86,9 @@ async function loadRecordDetail() {
     // 채팅 컨텍스트 저장
     _chatContext = { class_name: info.ko, confidence: r.confidence, report };
 
-    // 저장된 채팅 기록 복원
+    // 저장된 채팅 기록 복원 (멀티턴 이력도 함께 초기화)
     const savedChat = r.chat_history || [];
+    _chatMessages = savedChat.map(m => ({ role: m.role, content: m.content }));
     if (savedChat.length > 0) {
       renderChatHistory(savedChat);
     }
@@ -209,7 +211,7 @@ async function sendChat() {
     const res = await apiFetch('/api/analyze/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, context: _chatContext }),
+      body: JSON.stringify({ question, context: _chatContext, history: _chatMessages }),
     });
     const data = await res.json();
     const rawAnswer = data.answer || 'LLM이 비활성화되어 있습니다.';
@@ -222,6 +224,9 @@ async function sendChat() {
       </div>`);
 
     const ts = new Date().toISOString();
+    // 인메모리 이력에 누적 (다음 턴에 전달)
+    _chatMessages.push({ role: 'user', content: question, ts });
+    _chatMessages.push({ role: 'ai',   content: rawAnswer, ts });
     saveChatMessages([
       { role: 'user', content: question,   ts },
       { role: 'ai',   content: rawAnswer,  ts },
