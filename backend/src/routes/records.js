@@ -104,6 +104,32 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// DELETE /api/records/:id — 기록 삭제
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { data: record, error: fetchErr } = await supabase
+      .from('analysis_records')
+      .select('record_id, image_url, gradcam_url')
+      .eq('record_id', req.params.id)
+      .eq('user_id', req.user.user_id)
+      .single();
+
+    if (fetchErr || !record) return res.status(404).json({ message: '기록을 찾을 수 없습니다.' });
+
+    const { error } = await supabase
+      .from('analysis_records')
+      .delete()
+      .eq('record_id', req.params.id)
+      .eq('user_id', req.user.user_id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('기록 삭제 오류:', err);
+    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+  }
+});
+
 // PATCH /api/records/:id/chat — 채팅 메시지 추가 저장
 router.patch('/:id/chat', authenticateToken, async (req, res) => {
   const { messages } = req.body;

@@ -126,7 +126,17 @@
   .tag.med-conf { background: #fff7ed; color: #d97706; }
   .tag.low-conf { background: #fef2f2; color: #dc2626; }
 
-  .record-right { flex-shrink: 0; }
+  .record-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .delete-btn {
+    width: auto; height: auto; border-radius: 6px; border: none;
+    background: transparent; color: #d1d5db; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 3px;
+    transition: all 0.15s; padding: 3px 6px; flex-shrink: 0;
+    font-size: 10px; font-weight: 500; font-family: inherit; white-space: nowrap;
+  }
+  .delete-btn:hover { background: #fef2f2; color: #ef4444; }
+  .delete-btn:active { transform: scale(0.93); }
+  .delete-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
   .confidence-ring { position: relative; width: 40px; height: 40px; }
   .confidence-ring svg { transform: rotate(-90deg); }
   .ring-bg { fill: none; stroke: #f3f4f6; stroke-width: 4; }

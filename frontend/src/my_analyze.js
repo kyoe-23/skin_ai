@@ -132,7 +132,13 @@ function renderList(records) {
           <span class="tag date">${r.date}</span>
         </div>
       </div>
-      <div class="record-right">${renderRing(r.conf)}</div>
+      <div class="record-right">
+        ${renderRing(r.conf)}
+        <button class="delete-btn" onclick="deleteRecord('${r.id}',event)" title="기록 삭제">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          기록삭제
+        </button>
+      </div>
     </div>`;
   }).join('');
 
@@ -293,6 +299,28 @@ function renderStreak() {
     cells.push(`<div class="streak-day ${lv > 0 ? 'lv' + lv : ''} ${i === 0 ? 'today' : ''}"></div>`);
   }
   grid.innerHTML = cells.join('');
+}
+
+// ── 기록 삭제 ──
+async function deleteRecord(id, e) {
+  e.stopPropagation();
+  if (!confirm('이 분석 기록을 삭제하시겠습니까?')) return;
+
+  try {
+    const res = await apiFetch(`/api/records/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    allRecords = allRecords.filter(r => r.id !== id);
+    updateStats();
+    applyFilters();
+    renderDiseaseChart();
+    renderMonthlyChart();
+    renderStreak();
+  } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') return;
+    console.error('기록 삭제 실패:', err);
+    alert('기록 삭제에 실패했습니다.');
+  }
 }
 
 // ── 초기화 ──

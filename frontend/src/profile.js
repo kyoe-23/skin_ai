@@ -426,6 +426,48 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
 });
 
+// ── 학습 통계 로드 ────────────────────────────────────
+(async function loadLearningStats() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  if (!token) return;
+
+  try {
+    const res = await apiFetch('/api/records');
+    if (!res.ok) return;
+    const { records } = await res.json();
+
+    const totalEl    = document.getElementById('statAnalysisCount');
+    const diseaseEl  = document.getElementById('statDiseaseCount');
+    const streakEl   = document.getElementById('statStreak');
+
+    if (totalEl)   totalEl.textContent   = records.length;
+    if (diseaseEl) diseaseEl.textContent = new Set(records.map(r => r.primary_diagnosis).filter(Boolean)).size;
+    if (streakEl)  streakEl.textContent  = calcStreak(records) + '일';
+  } catch (_) {}
+})();
+
+function calcStreak(records) {
+  const dates = new Set(records.map(r => r.created_at.slice(0, 10)));
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+
+  // 오늘 기록 없으면 어제부터 체크
+  const start = new Date(today);
+  if (!dates.has(todayStr)) start.setDate(start.getDate() - 1);
+
+  let streak = 0;
+  const d = new Date(start);
+  while (streak < 365) {
+    if (dates.has(d.toISOString().slice(0, 10))) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 // ── TOAST ─────────────────────────────────────────────
 let toastTimer = null;
 function showToast(msg, type = '') {
