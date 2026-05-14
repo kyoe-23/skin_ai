@@ -4,6 +4,8 @@
 환경변수 LLM_ENABLED=false 또는 API 키 부재 시 None 반환 (graceful).
 """
 # ── 표준 라이브러리 ──────────────────────────────────────────────
+import base64
+import io
 import json
 import logging
 import os
@@ -16,8 +18,11 @@ logger = logging.getLogger(__name__)
 
 # ── 상수 (CLAUDE.md 코딩 규칙 ① 하드코딩 금지) ───────────────────
 DEFAULT_MODEL = "claude-sonnet-4-6"
-DEFAULT_MAX_TOKENS = 1024
-DEFAULT_TIMEOUT_SEC = 30
+DEFAULT_MAX_TOKENS = 4096
+DEFAULT_MAX_TOKENS_CHAT = 1536
+DEFAULT_TIMEOUT_SEC = 45
+DEFAULT_OOD_TIMEOUT_SEC = 8       # OOD 판별 타임아웃 — 초과 시 pass-through
+DEFAULT_OOD_MAX_DIM = 512         # Haiku 전송 전 리사이즈 최대 픽셀
 CONFIDENCE_LOW_THRESHOLD = 0.70   # 이 미만은 '불확실' 어조 강화
 
 
@@ -96,10 +101,10 @@ def _build_system_prompt() -> str:
 [출력 형식 — 반드시 아래 JSON 스키마 준수, 코드블록 없이 JSON만]
 {
   "summary": "AI 분류 결과 1~2문장",
-  "mechanism": "발병 기전 — 왜 이 질환이 생기는지 피부 생리학적 관점에서 2~3문장. 특정 제품·약품명 언급 금지",
-  "features": "임상 특징 — 병변 양상·호발 부위·진행 양상 2~3문장",
-  "triggers": "악화 요인과 그 의학적 이유 2~3문장. 단순 금지 나열이 아닌 왜 악화되는지 기전 중심으로 설명. 특정 제품·약품명 언급 금지",
-  "red_flags": "즉시 전문의 진료가 필요한 구체적 신호 1~2문장 (크기·증상 변화·동반 증상 등)",
+  "mechanism": "발병 기전 — 피부 생리학적 관점에서 2문장. 특정 제품·약품명 언급 금지",
+  "features": "임상 특징 — 병변 양상·호발 부위·진행 양상 2문장",
+  "triggers": "악화 요인과 그 의학적 이유 2문장. 왜 악화되는지 기전 중심으로 설명. 특정 제품·약품명 언급 금지",
+  "red_flags": "즉시 전문의 진료가 필요한 구체적 신호 1문장 (크기·증상 변화·동반 증상 등)",
   "learning_point": "이 케이스에서 가장 중요한 교육적 핵심 포인트 1문장",
   "disclaimer": "전문의 상담 권유 면책 1문장"
 }"""
@@ -113,7 +118,7 @@ def generate_report(prediction: dict, clinical_ref: Optional[dict]) -> Optional[
         clinical_ref: /predict의 'clinical_ref' 필드 (None 가능)
 
     Returns:
-        dict({summary, features, advice, disclaimer}) 또는 None (LLM 비활성·실패 시).
+        dict({summary, mechanism, features, triggers, red_flags, learning_point, disclaimer}) 또는 None (LLM 비활성·실패 시).
     """
     client = _get_client()
     if client is None:
@@ -160,11 +165,78 @@ def generate_report(prediction: dict, clinical_ref: Optional[dict]) -> Optional[
         return json.loads(_extract_json_object(text))
     except json.JSONDecodeError as e:
         # text가 비어있거나 추출 실패한 경우까지 graceful 처리
-        logger.warning(f"[LLM] JSON 파싱 실패 — 원문 폴백 사용: error={e}, output_len={len(text) if 'text' in locals() else 0}")
-        fallback = text if 'text' in locals() and text else "(LLM 응답 없음)"
-        return {"summary": fallback, "features": "", "advice": "", "disclaimer": "본 분석은 참고용이며, 피부과 전문의 진료가 필요합니다."}
+        raw = text if 'text' in locals() and text else ""
+        logger.warning(f"[LLM] JSON 파싱 실패 — 원문 폴백 사용: error={e}, output_len={len(raw)}, output_preview={raw[:200]!r}")
+        return {
+            "summary": "AI 소견을 생성하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+            "mechanism": "", "features": "", "triggers": "",
+            "red_flags": "", "learning_point": "",
+            "disclaimer": "본 분석은 참고용이며, 피부과 전문의 진료가 필요합니다.",
+        }
     except anthropic.APIError as e:
         logger.error(f"[LLM] Claude API 오류: error={e}")
+        return None
+
+
+def check_is_skin_image(image: "Image") -> Optional[bool]:
+    """Haiku vision으로 업로드 이미지가 피부/피부병변 사진인지 사전 판별.
+
+    DenseNet은 폐쇄형 분류기라 비-피부 이미지도 높은 신뢰도로 오분류한다.
+    이를 막기 위해 추론 전에 Haiku vision으로 이진 판별을 수행한다.
+
+    Args:
+        image: PIL RGB 이미지
+
+    Returns:
+        True  — 피부 이미지로 판별 → DenseNet 분류 진행
+        False — 피부 이미지 아님  → HTTP 400 거절
+        None  — 판별 불가(API 오류/비활성) → pass-through (서비스 중단 방지)
+    """
+    if os.environ.get("OOD_CHECK_ENABLED", "false").lower() != "true":
+        return None
+
+    client = _get_client()
+    if client is None:
+        return None
+
+    max_dim = int(os.environ.get("OOD_IMAGE_MAX_DIM", str(DEFAULT_OOD_MAX_DIM)))
+    resized = image.copy()
+    resized.thumbnail((max_dim, max_dim))
+
+    buf = io.BytesIO()
+    resized.save(buf, format="JPEG", quality=85)
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+    ood_timeout = int(os.environ.get("OOD_TIMEOUT_SEC", str(DEFAULT_OOD_TIMEOUT_SEC)))
+
+    try:
+        response = client.with_options(timeout=ood_timeout).messages.create(
+            model=os.environ.get("LLM_MODEL_OOD", "claude-haiku-4-5-20251001"),
+            max_tokens=5,
+            system=(
+                "이미지가 사람의 피부 또는 피부 병변(여드름·발진·반점·습진·상처 등)을 찍은 사진이면 'YES', "
+                "그 외(동물·음식·풍경·사물 등)이면 'NO'만 출력하세요. 다른 텍스트는 절대 출력하지 마세요."
+            ),
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": "image/jpeg", "data": b64},
+                    },
+                    {"type": "text", "text": "YES 또는 NO"},
+                ],
+            }],
+        )
+        answer = response.content[0].text.strip().upper()
+        result = answer.startswith("YES")
+        logger.info(f"[OOD] 판별 완료: answer={answer!r}, is_skin={result}")
+        return result
+    except anthropic.APITimeoutError:
+        logger.warning("[OOD] 타임아웃 — pass-through")
+        return None
+    except anthropic.APIError as e:
+        logger.warning(f"[OOD] API 오류 — pass-through: error={e}")
         return None
 
 
@@ -229,7 +301,7 @@ def chat_response(question: str, context: dict, history: Optional[list] = None) 
     try:
         response = client.messages.create(
             model=os.environ.get("LLM_MODEL_CHAT", DEFAULT_MODEL),
-            max_tokens=512,
+            max_tokens=int(os.environ.get("LLM_MAX_TOKENS_CHAT", str(DEFAULT_MAX_TOKENS_CHAT))),
             system=system,
             messages=messages,
         )

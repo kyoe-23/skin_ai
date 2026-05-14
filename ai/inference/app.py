@@ -17,7 +17,7 @@ import traceback
 import threading
 from pathlib import Path
 from typing import Optional, Tuple
-from llm_service import generate_report
+from llm_service import check_is_skin_image, generate_report
 
 # ── 서드파티 ─────────────────────────────────────────────────────
 import numpy as np
@@ -427,6 +427,17 @@ def predict():
     image, error = _validate_image(file)
     if error:
         return jsonify({"success": False, "error": error}), 400
+
+    # ── [OOD 필터] DenseNet 추론 전 Haiku vision 사전 판별 ──────────
+    # False → 명확히 비-피부 이미지 → 거절
+    # None  → 판별 불가(비활성·API 오류) → pass-through
+    is_skin = check_is_skin_image(image)
+    if is_skin is False:
+        return jsonify({
+            "success": False,
+            "error": "피부 또는 피부 병변 이미지를 업로드해 주세요.",
+            "ood": True,
+        }), 400
 
     if not _infer_lock.acquire(timeout=10):
         return jsonify({"success": False, "error": "서버가 다른 분석 요청을 처리 중입니다. 잠시 후 다시 시도해 주세요."}), 503
