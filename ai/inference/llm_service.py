@@ -104,7 +104,6 @@ def _build_system_prompt() -> str:
   "mechanism": "발병 기전 — 피부 생리학적 관점에서 2문장. 특정 제품·약품명 언급 금지",
   "features": "임상 특징 — 병변 양상·호발 부위·진행 양상 2문장",
   "triggers": "악화 요인과 그 의학적 이유 2문장. 왜 악화되는지 기전 중심으로 설명. 특정 제품·약품명 언급 금지",
-  "red_flags": "즉시 전문의 진료가 필요한 구체적 신호 1문장 (크기·증상 변화·동반 증상 등)",
   "learning_point": "이 케이스에서 가장 중요한 교육적 핵심 포인트 1문장",
   "disclaimer": "전문의 상담 권유 면책 1문장"
 }"""
@@ -118,7 +117,7 @@ def generate_report(prediction: dict, clinical_ref: Optional[dict]) -> Optional[
         clinical_ref: /predict의 'clinical_ref' 필드 (None 가능)
 
     Returns:
-        dict({summary, mechanism, features, triggers, red_flags, learning_point, disclaimer}) 또는 None (LLM 비활성·실패 시).
+        dict({summary, mechanism, features, triggers, learning_point, disclaimer}) 또는 None (LLM 비활성·실패 시).
     """
     client = _get_client()
     if client is None:
@@ -170,7 +169,7 @@ def generate_report(prediction: dict, clinical_ref: Optional[dict]) -> Optional[
         return {
             "summary": "AI 소견을 생성하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
             "mechanism": "", "features": "", "triggers": "",
-            "red_flags": "", "learning_point": "",
+            "learning_point": "",
             "disclaimer": "본 분석은 참고용이며, 피부과 전문의 진료가 필요합니다.",
         }
     except anthropic.APIError as e:

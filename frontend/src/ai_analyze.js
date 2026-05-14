@@ -259,7 +259,7 @@ function renderFindings(report) {
       report.mechanism      && `<div class="finding-item"><div class="finding-dot" style="background:#7c3aed"></div><div class="finding-text"><strong style="font-size:11px;color:#7c3aed;display:block;margin-bottom:2px;">발병 기전</strong>${report.mechanism}</div></div>`,
       report.features       && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text"><strong style="font-size:11px;color:#2563eb;display:block;margin-bottom:2px;">임상 특징</strong>${report.features}</div></div>`,
       report.triggers       && `<div class="finding-item"><div class="finding-dot" style="background:#d97706"></div><div class="finding-text"><strong style="font-size:11px;color:#d97706;display:block;margin-bottom:2px;">악화 요인</strong>${report.triggers}</div></div>`,
-      report.red_flags      && `<div class="finding-item" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;"><strong style="font-size:11px;color:#dc2626;display:block;margin-bottom:2px;">즉시 진료 신호</strong><div class="finding-text" style="color:#dc2626;">${report.red_flags}</div></div>`,
+
       report.learning_point && `<div class="finding-item" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;"><strong style="font-size:11px;color:#16a34a;display:block;margin-bottom:2px;">핵심 학습 포인트</strong><div class="finding-text" style="color:#15803d;">${report.learning_point}</div></div>`,
       report.disclaimer     && `<div class="finding-item" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;"><div class="finding-text" style="color:#92400e;font-size:12px;">${report.disclaimer}</div></div>`,
     ].filter(Boolean).join('');
