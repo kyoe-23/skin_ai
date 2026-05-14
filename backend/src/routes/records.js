@@ -22,7 +22,7 @@ const CLASS_KEY_MAP = {
 // POST /api/records — 분석 결과 저장 (이미지는 이미 Supabase에 업로드된 상태)
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { image_url, primary_diagnosis, confidence, differential, gradcam_b64, clinical_ref, ai_findings } = req.body;
+    const { image_url, primary_diagnosis, confidence, differential, gradcam_b64, clinical_ref, ai_findings, chat_history } = req.body;
 
     if (!image_url || !primary_diagnosis || confidence == null) {
       return res.status(400).json({ message: '이미지 URL, 진단명, 신뢰도는 필수입니다.' });
@@ -55,6 +55,7 @@ router.post('/', authenticateToken, async (req, res) => {
         clinical_ref:      clinical_ref  || null,
         ai_findings:       ai_findings   || null,
         gradcam_url:       gradcamUrl,
+        chat_history:      (chat_history && chat_history.length > 0) ? chat_history : null,
         status:            'pending',
       }])
       .select()

@@ -14,6 +14,7 @@ import logging
 import os
 import time
 import traceback
+import threading
 from pathlib import Path
 from typing import Optional, Tuple
 from llm_service import generate_report
@@ -83,6 +84,9 @@ _device: Optional[torch.device] = None
 _thresholds: Optional[dict] = None
 _clinical_ref: Optional[dict] = None
 _backbone: Optional[str] = None
+
+# 동시 추론 1개로 제한 — 요청 누적 시 CPU 포화 방지
+_infer_lock = threading.Semaphore(1)
 
 # ── 추론 transform (서버 시작 시 1회 생성) ───────────────────────
 _infer_transform = transforms.Compose([
@@ -283,6 +287,16 @@ def _load_model():
         _clinical_ref = {}
         logger.warning("[WARNING] DATA_CSV 없음 — clinical_ref 비활성")
 
+    # 워밍업: 첫 실제 요청이 느려지지 않도록 더미 추론 1회 실행
+    logger.info("[INFO] 모델 워밍업 시작...")
+    try:
+        dummy = torch.zeros(1, 3, INFER_CROP, INFER_CROP).to(_device)
+        with torch.no_grad():
+            _ = _model(dummy)
+        logger.info("[INFO] 워밍업 완료")
+    except Exception as e:
+        logger.warning(f"[WARNING] 워밍업 실패 (무시): {e}")
+
 
 # ── 헬퍼: 이미지 전처리 ──────────────────────────────────────────
 
@@ -414,6 +428,9 @@ def predict():
     if error:
         return jsonify({"success": False, "error": error}), 400
 
+    if not _infer_lock.acquire(timeout=10):
+        return jsonify({"success": False, "error": "서버가 다른 분석 요청을 처리 중입니다. 잠시 후 다시 시도해 주세요."}), 503
+
     try:
         input_tensor = _preprocess_image(image)
 
@@ -476,10 +493,11 @@ def predict():
         logger.error(f"[ERROR] 모델 추론 실패: error={e}")
         return jsonify({"success": False, "error": "모델 추론 중 오류가 발생했습니다."}), 500
     except Exception as e:
-        # 예상치 못한 오류는 트레이스백 기록
         logger.error(f"[ERROR] 예측 처리 중 예상치 못한 오류: error={e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": "분석 중 오류가 발생했습니다."}), 500
+    finally:
+        _infer_lock.release()
 
 
 @app.route("/chat", methods=["POST"])

@@ -105,7 +105,7 @@ function renderList(records) {
         <div class="empty-icon">🔬</div>
         <div class="empty-title">아직 분석 기록이 없어요</div>
         <div class="empty-text">AI 분석 페이지에서 피부 이미지를<br>분석하면 여기에 기록이 쌓입니다</div>
-        <button class="empty-btn" onclick="location.href='ai-analyze.html'">AI 분석 시작하기</button>
+        <button class="empty-btn" onclick="location.href='ai_analyze.html'">AI 분석 시작하기</button>
       </div>`;
     document.getElementById('pagination').innerHTML = '';
     return;

@@ -392,7 +392,6 @@ async function sendChat() {
         <div class="chat-dot"></div><div class="chat-dot"></div><div class="chat-dot"></div>
       </div>
     </div>`);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
 
   try {
     const res = await apiFetch('/api/analyze/chat', {
@@ -451,24 +450,12 @@ async function saveRecord() {
         gradcam_b64:       lastApiResult.gradcam     || null,
         clinical_ref:      lastApiResult.clinical_ref ?? null,
         ai_findings:       lastApiResult.report ? JSON.stringify(lastApiResult.report) : null,
+        chat_history:      chatHistory.length > 0 ? chatHistory : null,
       }),
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const saved = await res.json();
-
-    // 채팅 기록이 있으면 PATCH로 별도 저장 (chat_history 컬럼 선택적)
-    if (chatHistory.length > 0 && saved?.record?.record_id) {
-      try {
-        await apiFetch(`/api/records/${saved.record.record_id}/chat`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: chatHistory }),
-        });
-      } catch (chatErr) {
-        console.warn('채팅 기록 저장 실패 (무시):', chatErr);
-      }
-    }
 
     alert('기록이 저장됐습니다.');
   } catch (err) {

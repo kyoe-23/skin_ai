@@ -102,7 +102,13 @@ router.post('/run', authenticateToken, async (req, res) => {
     res.json(flaskRes.data);
   } catch (err) {
     console.error('[analyze/run]', err.message);
-    res.status(502).json({ success: false, error: 'AI 서버와 통신에 실패했습니다.' });
+    if (err.code === 'ECONNREFUSED') {
+      res.status(503).json({ success: false, error: 'AI 분석 서버가 실행 중이지 않습니다. 서버를 시작해 주세요.' });
+    } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+      res.status(504).json({ success: false, error: 'AI 분석 서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.' });
+    } else {
+      res.status(502).json({ success: false, error: 'AI 서버와 통신에 실패했습니다.' });
+    }
   }
 });
 
