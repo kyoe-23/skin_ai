@@ -13,3 +13,4 @@ SkinAI 프로젝트 각 파트별 기획 및 설계 문서.
 | [part6_training_plan.md](part6_training_plan.md) | 학습 실행 기획 · 데이터 현황 · Phase별 단계 계획 |
 | [data-dataset-15-memoized-starlight.md](data-dataset-15-memoized-starlight.md) | DS15 통합 기획 · 전처리 호환성 · 멀티헤드 설계 |
 | [llm_api_research.md](llm_api_research.md) | LLM API 통합 가이드 |
+| [part8_ood_filter.md](part8_ood_filter.md) | 비-피부 이미지 거절 기능 (OOD Filter) 기획안 |

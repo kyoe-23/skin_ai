@@ -74,7 +74,7 @@ ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
 
 SUPPORTED_BACKBONES = {"densenet121", "efficientnet_b3"}
 ATOPY_CLASS = "아토피피부염"   # severity_dist를 노출할 클래스
-DEFAULT_MIN_CONFIDENCE = 0.7   # OOD/저신뢰 케이스 거절용 글로벌 floor — .env의 MIN_CONFIDENCE로 override
+DEFAULT_MIN_CONFIDENCE = 0.35  # OOD/저신뢰 케이스 거절용 글로벌 floor — .env의 MIN_CONFIDENCE로 override
 
 app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
 
