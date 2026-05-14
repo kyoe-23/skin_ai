@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" font-family="'Pretendard','Apple SD Gothic Neo',sans-serif">
+  <!-- Background -->
+  <rect width="900" height="560" fill="#f8fafc" rx="12"/>
+
+  <!-- Title -->
+  <text x="450" y="36" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">SkinAI LLM Pipeline</text>
+
+  <!-- ── STEP boxes ── -->
+  <!-- STEP 1: Image Upload -->
+  <rect x="30" y="70" width="120" height="52" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="90" y="91" text-anchor="middle" font-size="11" font-weight="600" fill="#4338ca">이미지 업로드</text>
+  <text x="90" y="108" text-anchor="middle" font-size="10" fill="#6366f1">Express :3000</text>
+
+  <!-- Arrow 1→2 -->
+  <line x1="150" y1="96" x2="188" y2="96" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- STEP 2: OOD Filter -->
+  <rect x="188" y="70" width="148" height="52" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+  <text x="262" y="89" text-anchor="middle" font-size="11" font-weight="600" fill="#c2410c">① OOD 필터</text>
+  <text x="262" y="104" text-anchor="middle" font-size="10" fill="#ea580c">Haiku vision</text>
+  <text x="262" y="116" text-anchor="middle" font-size="9.5" fill="#9a3412">max_tokens=5 / 8s timeout</text>
+
+  <!-- OOD reject arrow (down) -->
+  <line x1="262" y1="122" x2="262" y2="158" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrRed)"/>
+  <rect x="188" y="158" width="148" height="38" rx="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1"/>
+  <text x="262" y="174" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="600">HTTP 400 거절</text>
+  <text x="262" y="188" text-anchor="middle" font-size="9" fill="#dc2626">비피부 이미지</text>
+
+  <!-- Arrow 2→3 (pass) -->
+  <line x1="336" y1="96" x2="374" y2="96" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="355" y="89" text-anchor="middle" font-size="9" fill="#16a34a">YES</text>
+
+  <!-- STEP 3: DenseNet -->
+  <rect x="374" y="70" width="138" height="52" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="443" y="89" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">② DenseNet 추론</text>
+  <text x="443" y="104" text-anchor="middle" font-size="10" fill="#16a34a">Flask :5001</text>
+  <text x="443" y="116" text-anchor="middle" font-size="9.5" fill="#166534">11종 분류 + Grad-CAM</text>
+
+  <!-- Arrow 3→4 -->
+  <line x1="512" y1="96" x2="550" y2="96" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- STEP 4: Report -->
+  <rect x="550" y="70" width="152" height="52" rx="8" fill="#fdf4ff" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="626" y="89" text-anchor="middle" font-size="11" font-weight="600" fill="#7e22ce">③ 리포트 생성</text>
+  <text x="626" y="104" text-anchor="middle" font-size="10" fill="#9333ea">Sonnet 4.6</text>
+  <text x="626" y="116" text-anchor="middle" font-size="9.5" fill="#6b21a8">max_tokens=4096 / 45s</text>
+
+  <!-- Arrow 4→5 -->
+  <line x1="702" y1="96" x2="740" y2="96" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- STEP 5: Frontend -->
+  <rect x="740" y="70" width="120" height="52" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text x="800" y="91" text-anchor="middle" font-size="11" font-weight="600" fill="#334155">결과 표시</text>
+  <text x="800" y="108" text-anchor="middle" font-size="10" fill="#64748b">Frontend</text>
+
+  <!-- ── Chat section ── -->
+  <!-- Divider -->
+  <line x1="40" y1="230" x2="860" y2="230" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="6 4"/>
+  <text x="450" y="248" text-anchor="middle" font-size="12" font-weight="700" fill="#64748b">AI 의료 어시스턴트 (멀티턴 채팅)</text>
+
+  <!-- Chat flow boxes -->
+  <!-- User question -->
+  <rect x="30" y="262" width="120" height="52" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="90" y="283" text-anchor="middle" font-size="11" font-weight="600" fill="#4338ca">사용자 질문</text>
+  <text x="90" y="299" text-anchor="middle" font-size="9.5" fill="#6366f1">chatInput</text>
+
+  <!-- Arrow -->
+  <line x1="150" y1="288" x2="188" y2="288" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Context build -->
+  <rect x="188" y="262" width="148" height="52" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="262" y="281" text-anchor="middle" font-size="11" font-weight="600" fill="#334155">컨텍스트 구성</text>
+  <text x="262" y="296" text-anchor="middle" font-size="9.5" fill="#64748b">진단결과 + 이력(최대 20턴)</text>
+  <text x="262" y="308" text-anchor="middle" font-size="9.5" fill="#64748b">role: ai → assistant 변환</text>
+
+  <!-- Arrow -->
+  <line x1="336" y1="288" x2="374" y2="288" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Haiku Chat -->
+  <rect x="374" y="262" width="148" height="52" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+  <text x="448" y="281" text-anchor="middle" font-size="11" font-weight="600" fill="#c2410c">④ 채팅 응답</text>
+  <text x="448" y="296" text-anchor="middle" font-size="10" fill="#ea580c">Haiku 4.5</text>
+  <text x="448" y="308" text-anchor="middle" font-size="9.5" fill="#9a3412">max_tokens=1536</text>
+
+  <!-- Arrow -->
+  <line x1="522" y1="288" x2="560" y2="288" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- DB save -->
+  <rect x="560" y="262" width="148" height="52" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="634" y="281" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">DB 저장</text>
+  <text x="634" y="296" text-anchor="middle" font-size="9.5" fill="#16a34a">PATCH /api/records/:id/chat</text>
+  <text x="634" y="308" text-anchor="middle" font-size="9.5" fill="#166534">Supabase</text>
+
+  <!-- Arrow -->
+  <line x1="708" y1="288" x2="746" y2="288" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Display -->
+  <rect x="746" y="262" width="114" height="52" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text x="803" y="283" text-anchor="middle" font-size="11" font-weight="600" fill="#334155">답변 표시</text>
+  <text x="803" y="299" text-anchor="middle" font-size="9.5" fill="#64748b">scrollIntoView</text>
+
+  <!-- ── Legend ── -->
+  <rect x="30" y="356" width="840" height="180" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="50" y="378" font-size="12" font-weight="700" fill="#0f172a">모델 &amp; 환경변수 매트릭스</text>
+
+  <!-- Header row -->
+  <rect x="40" y="386" width="810" height="24" rx="4" fill="#f1f5f9"/>
+  <text x="100" y="402" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">기능</text>
+  <text x="260" y="402" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">모델 (env)</text>
+  <text x="430" y="402" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">max_tokens</text>
+  <text x="580" y="402" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">활성 조건</text>
+  <text x="760" y="402" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">실패 시</text>
+
+  <!-- Row 1: OOD -->
+  <rect x="40" y="410" width="810" height="28" rx="0" fill="#fff7ed" opacity="0.6"/>
+  <text x="100" y="428" text-anchor="middle" font-size="10" fill="#334155">OOD 필터</text>
+  <text x="260" y="428" text-anchor="middle" font-size="10" fill="#334155">Haiku 4.5  (LLM_MODEL_OOD)</text>
+  <text x="430" y="428" text-anchor="middle" font-size="10" fill="#334155">5</text>
+  <text x="580" y="428" text-anchor="middle" font-size="10" fill="#334155">LLM_ENABLED + OOD_CHECK_ENABLED</text>
+  <text x="760" y="428" text-anchor="middle" font-size="10" fill="#16a34a">pass-through</text>
+
+  <!-- Row 2: Report -->
+  <rect x="40" y="438" width="810" height="28" rx="0" fill="#fdf4ff" opacity="0.6"/>
+  <text x="100" y="456" text-anchor="middle" font-size="10" fill="#334155">리포트 생성</text>
+  <text x="260" y="456" text-anchor="middle" font-size="10" fill="#334155">Sonnet 4.6  (LLM_MODEL)</text>
+  <text x="430" y="456" text-anchor="middle" font-size="10" fill="#334155">4096</text>
+  <text x="580" y="456" text-anchor="middle" font-size="10" fill="#334155">LLM_ENABLED=true</text>
+  <text x="760" y="456" text-anchor="middle" font-size="10" fill="#64748b">None (생략)</text>
+
+  <!-- Row 3: Chat -->
+  <rect x="40" y="466" width="810" height="28" rx="0" fill="#fff7ed" opacity="0.6"/>
+  <text x="100" y="484" text-anchor="middle" font-size="10" fill="#334155">멀티턴 채팅</text>
+  <text x="260" y="484" text-anchor="middle" font-size="10" fill="#334155">Haiku 4.5  (LLM_MODEL_CHAT)</text>
+  <text x="430" y="484" text-anchor="middle" font-size="10" fill="#334155">1536</text>
+  <text x="580" y="484" text-anchor="middle" font-size="10" fill="#334155">LLM_ENABLED=true</text>
+  <text x="760" y="484" text-anchor="middle" font-size="10" fill="#64748b">None (생략)</text>
+
+  <!-- prompt caching note -->
+  <rect x="40" y="498" width="810" height="28" rx="0" fill="#eff6ff" opacity="0.7"/>
+  <text x="100" y="516" text-anchor="middle" font-size="10" fill="#1d4ed8">프롬프트 캐싱</text>
+  <text x="380" y="516" text-anchor="middle" font-size="10" fill="#1d4ed8">리포트 시스템 프롬프트에 cache_control: ephemeral 적용 → 입력 비용 ~77% 절감</text>
+
+  <!-- Markers -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrRed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+    </marker>
+  </defs>
+</svg>
