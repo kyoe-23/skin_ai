@@ -118,7 +118,7 @@ function renderList(records) {
     const confClass = r.conf >= 80 ? 'high-conf' : r.conf >= 65 ? 'med-conf' : 'low-conf';
     const confLabel = r.conf >= 80 ? '고신뢰' : r.conf >= 65 ? '중신뢰' : '저신뢰';
     return `
-    <div class="record-item" style="animation-delay:${i * 0.04}s" onclick="openModal('${r.id}')">
+    <div class="record-item" style="animation-delay:${i * 0.04}s" onclick="goToDetail('${r.id}')">
       <div class="record-thumb">${r.imageUrl ? `<img src="${r.imageUrl}" alt="${r.diagKo}">` : r.emoji || '🔬'}</div>
       <div class="record-body">
         <div class="record-top">
@@ -167,7 +167,7 @@ function renderRing(pct) {
 }
 
 // ── 모달 ──
-function openModal(id) {
+function goToDetail(id) {
   window.location.href = 'record_detail.html?id=' + id;
 }
 

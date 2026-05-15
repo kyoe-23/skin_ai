@@ -64,11 +64,3 @@ function handleLogout() {
     setTimeout(() => { bar.style.width = target; }, 300);
   });
 })();
-
-
-// ── 통계 카드 숫자 카운트업 ───────────────────────────
-(function countUpStats() {
-  // ── DB 팀 연동 영역 ──────────────────────────────
-  // TODO: loadStats() 호출 후 실제 값으로 카운트업
-  // ── DB 팀 연동 영역 끝 ──────────────────────────
-})();

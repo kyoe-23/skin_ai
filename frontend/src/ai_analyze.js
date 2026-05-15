@@ -139,6 +139,7 @@ async function callAnalyzeAPI(imageUrl) {
       nameEn:     primaryDisease.nameEn,
       confidence: pred.confidence,
     },
+    others,
     report:          raw.report ?? null,
     gradcam:         raw.gradcam ?? null,
     clinical_ref:    raw.clinical_ref ?? null,
