@@ -10,6 +10,8 @@
 | 004 | `004_notification_preferences.sql` | `notification_preferences` 신규 테이블 |
 | 005 | `005_user_sessions.sql` | `user_sessions` 신규 테이블 |
 | 006 | `006_storage_buckets.sql` | `gradcam`·`avatars` Storage 버킷 (권한 부족 시 Dashboard 에서 수동 생성) |
+| 007 | `007_password_reset_tokens.sql` | `password_reset_tokens` 신규 — 인메모리 Map → DB 영속화 |
+| 008 | `008_email_verification_codes.sql` | `email_verification_codes` 신규 — 인메모리 Map → DB 영속화 |
 
 ## 적용 후 코드 동작 확인
 
@@ -33,6 +35,19 @@ curl http://localhost:3000/api/auth/check-email?email=test@test.com
 | `UPLOAD_MAX_BYTES` | `10485760` | 일반 이미지 업로드 최대 (10MB) |
 
 마이그레이션이 모두 적용되기 전이라도 `issueTokenAndSession` 에는 fallback 이 있어 로그인은 동작한다 (단 세션 기능은 비활성).
+
+**중요**: 마이그레이션 007·008 적용 전에는 비밀번호 재설정·이메일 변경 라우트가 **항상 실패**한다 (관련 코드가 DB 의존). 단, 회원가입·로그인·일반 인증은 정상 동작.
+
+## 정리 잡 (선택)
+
+`password_reset_tokens` / `email_verification_codes` 는 만료 행이 누적되므로 `pg_cron` 으로 일일 정리 권장:
+
+```sql
+SELECT cron.schedule('pw_reset_gc',  '0 3 * * *',
+  $$DELETE FROM password_reset_tokens     WHERE expires_at < now() - interval '1 day'$$);
+SELECT cron.schedule('email_code_gc', '0 3 * * *',
+  $$DELETE FROM email_verification_codes  WHERE expires_at < now() - interval '1 day'$$);
+```
 
 ## 롤백
 

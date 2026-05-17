@@ -15,17 +15,9 @@ const {
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────
-// 인메모리 토큰·코드 저장소 (TTL 자동 정리)
+// 헬퍼 — 토큰·코드 행이 활성(미만료 + 미사용)인지 검증
 // ─────────────────────────────────────────────────────
-const _passwordResetTokens = new Map();   // token   → { email, expires }
-const _emailChangeCodes    = new Map();   // user_id → { newEmail, code, expires }
-
-const _cleanupExpired = () => {
-  const now = Date.now();
-  for (const [k, v] of _passwordResetTokens) if (v.expires < now) _passwordResetTokens.delete(k);
-  for (const [k, v] of _emailChangeCodes)    if (v.expires < now) _emailChangeCodes.delete(k);
-};
-setInterval(_cleanupExpired, 10 * 60 * 1000);
+const _isExpired = (isoStr) => !isoStr || new Date(isoStr) < new Date();
 
 // ─────────────────────────────────────────────────────
 // SMTP
@@ -203,20 +195,22 @@ router.post('/forgot-password', async (req, res) => {
 
   try {
     const { data: user } = await supabase
-      .from('users').select('name').eq('email', email).maybeSingle();
+      .from('users').select('user_id, name').eq('email', email).maybeSingle();
 
     // 이메일 존재 여부 노출 방지 — 항상 동일 응답
     if (!user) return res.json({ message: ERROR_MESSAGES.RESET_SENT });
 
-    // 동일 이메일의 기존 미사용 토큰 제거
-    for (const [t, d] of _passwordResetTokens) {
-      if (d.email === email) _passwordResetTokens.delete(t);
-    }
+    // 동일 유저의 기존 미사용 토큰 정리 (rolling token 정책)
+    await supabase.from('password_reset_tokens')
+      .delete().eq('user_id', user.user_id).is('used_at', null);
 
     const token = crypto.randomBytes(32).toString('hex');
-    _passwordResetTokens.set(token, {
-      email, expires: Date.now() + AUTH_CONFIG.PASSWORD_RESET_TTL_MS,
-    });
+    const expires_at = new Date(Date.now() + AUTH_CONFIG.PASSWORD_RESET_TTL_MS).toISOString();
+
+    const { error: insErr } = await supabase
+      .from('password_reset_tokens')
+      .insert([{ token, user_id: user.user_id, expires_at }]);
+    if (insErr) throw insErr;
 
     const resetLink = `${process.env.FRONTEND_URL}/reset_password.html?token=${token}`;
     await _sendPasswordResetMail(email, user.name, resetLink);
@@ -228,15 +222,31 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-router.get('/verify-reset-token', (req, res) => {
+router.get('/verify-reset-token', async (req, res) => {
   const { token } = req.query;
-  const data = token ? _passwordResetTokens.get(token) : null;
-  if (!data || data.expires < Date.now()) {
+  if (!token) {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({
       valid: false, message: ERROR_MESSAGES.RESET_LINK_INVALID,
     });
   }
-  return res.json({ valid: true });
+
+  try {
+    const { data } = await supabase
+      .from('password_reset_tokens')
+      .select('expires_at, used_at')
+      .eq('token', token)
+      .maybeSingle();
+
+    if (!data || data.used_at || _isExpired(data.expires_at)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        valid: false, message: ERROR_MESSAGES.RESET_LINK_INVALID,
+      });
+    }
+    return res.json({ valid: true });
+  } catch (err) {
+    console.error('verify-reset-token 오류:', err.message);
+    return res.status(HTTP_STATUS.SERVER_ERROR).json({ valid: false });
+  }
 });
 
 router.post('/reset-password', async (req, res) => {
@@ -248,25 +258,34 @@ router.post('/reset-password', async (req, res) => {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.PASSWORD_TOO_SHORT });
   }
 
-  const data = _passwordResetTokens.get(token);
-  if (!data || data.expires < Date.now()) {
-    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.RESET_LINK_INVALID });
-  }
-
   try {
+    const { data: row, error: fetchErr } = await supabase
+      .from('password_reset_tokens')
+      .select('user_id, expires_at, used_at')
+      .eq('token', token)
+      .maybeSingle();
+    if (fetchErr) throw fetchErr;
+
+    if (!row || row.used_at || _isExpired(row.expires_at)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.RESET_LINK_INVALID });
+    }
+
     const password_hash = await bcrypt.hash(password, AUTH_CONFIG.BCRYPT_ROUNDS);
-    const { data: updated, error } = await supabase
+    const { error: updErr } = await supabase
       .from('users')
       .update({ password_hash, password_changed_at: new Date().toISOString() })
-      .eq('email', data.email)
-      .select('user_id')
-      .single();
-    if (error) throw error;
+      .eq('user_id', row.user_id);
+    if (updErr) throw updErr;
+
+    // 1회용 보장 — used_at 세팅
+    await supabase
+      .from('password_reset_tokens')
+      .update({ used_at: new Date().toISOString() })
+      .eq('token', token);
 
     // 모든 기존 세션 무효화 (탈취 대응)
-    await revokeAllSessions(updated.user_id);
+    await revokeAllSessions(row.user_id);
 
-    _passwordResetTokens.delete(token);
     return res.json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
   } catch (err) {
     console.error('reset-password 오류:', err.message);
@@ -336,11 +355,18 @@ router.post('/email/send-code', authenticateToken, async (req, res) => {
       return res.status(HTTP_STATUS.CONFLICT).json({ message: ERROR_MESSAGES.EMAIL_DUPLICATE });
     }
 
+    // 동일 유저의 미인증 코드 정리 (새 코드 발급 시 이전 invalidate)
+    await supabase.from('email_verification_codes')
+      .delete().eq('user_id', req.user.user_id).is('verified_at', null);
+
     // 6자리 코드 생성 — crypto 기반
     const code = String(crypto.randomInt(0, 1_000_000)).padStart(AUTH_CONFIG.EMAIL_CODE_LENGTH, '0');
-    _emailChangeCodes.set(req.user.user_id, {
-      newEmail, code, expires: Date.now() + AUTH_CONFIG.EMAIL_CODE_TTL_MS,
-    });
+    const expires_at = new Date(Date.now() + AUTH_CONFIG.EMAIL_CODE_TTL_MS).toISOString();
+
+    const { error: insErr } = await supabase
+      .from('email_verification_codes')
+      .insert([{ user_id: req.user.user_id, email: newEmail, code, expires_at }]);
+    if (insErr) throw insErr;
 
     await _sendEmailChangeCodeMail(newEmail, code);
     res.json({ message: '인증 코드를 발송했습니다.' });
@@ -357,18 +383,32 @@ router.post('/email/verify-code', authenticateToken, async (req, res) => {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.CODE_LENGTH });
   }
 
-  const entry = _emailChangeCodes.get(req.user.user_id);
-  if (!entry || entry.expires < Date.now() || entry.code !== String(code)) {
-    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.CODE_INVALID });
-  }
-
   try {
-    const { error } = await supabase
-      .from('users').update({ email: entry.newEmail }).eq('user_id', req.user.user_id);
-    if (error) throw error;
+    const { data: row, error: fetchErr } = await supabase
+      .from('email_verification_codes')
+      .select('id, email, expires_at')
+      .eq('user_id', req.user.user_id)
+      .eq('code', String(code))
+      .is('verified_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (fetchErr) throw fetchErr;
 
-    _emailChangeCodes.delete(req.user.user_id);
-    res.json({ message: '이메일이 변경되었습니다.', email: entry.newEmail });
+    if (!row || _isExpired(row.expires_at)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.CODE_INVALID });
+    }
+
+    // 이메일 적용
+    const { error: updErr } = await supabase
+      .from('users').update({ email: row.email }).eq('user_id', req.user.user_id);
+    if (updErr) throw updErr;
+
+    // 코드 사용 처리 (1회용)
+    await supabase.from('email_verification_codes')
+      .update({ verified_at: new Date().toISOString() }).eq('id', row.id);
+
+    res.json({ message: '이메일이 변경되었습니다.', email: row.email });
   } catch (err) {
     console.error('email/verify-code 오류:', err.message);
     res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });

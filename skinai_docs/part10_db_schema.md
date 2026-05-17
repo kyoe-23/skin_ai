@@ -5,9 +5,9 @@ SkinAI 백엔드(`backend/src/`)와 프론트엔드(`frontend/`)에서 실제로
 > **범위**: 커뮤니티 기능(`posts`·`comments`)은 본 문서에서 제외.
 > **분류**:
 > - 〔운영 중〕 — 코드에서 직접 `.from()` 호출 + `sql_schema/` 마이그레이션 정의 존재
-> - 〔후보〕 — 기능은 동작하나 인메모리·JSONB 등 비정규화 저장. DB 분리 권장
+> - 〔후보〕 — 기능은 동작하나 JSONB 등 비정규화 저장. 정규화 권장
 
-마이그레이션 파일은 `backend/sql_schema/` 에 `001~006*.sql` 로 분리. Supabase Dashboard SQL Editor 에서 순서대로 실행.
+마이그레이션 파일은 `backend/sql_schema/` 에 `001~008*.sql` 로 분리. Supabase Dashboard SQL Editor 에서 순서대로 실행.
 
 ---
 
@@ -22,8 +22,8 @@ users (PK user_id)
   │
   ├──< notification_preferences (PK user_id, 1:1)         [운영 중]
   ├──< user_sessions (FK user_id)                         [운영 중]
-  ├──< password_reset_tokens (FK user_id)                 [후보 — 현재 인메모리 Map]
-  └──< email_verification_codes (FK user_id)              [후보 — 현재 인메모리 Map]
+  ├──< password_reset_tokens (FK user_id)                 [운영 중]
+  └──< email_verification_codes (FK user_id)              [운영 중]
 
 Storage 버킷
   ├── skin-images/{user_id}/{uuid}.png        원본 (EXIF·라벨 마스킹)
@@ -263,46 +263,70 @@ WHERE r.chat_history IS NOT NULL;
 
 ---
 
-## 8) `password_reset_tokens` — 비밀번호 재설정 〔후보〕
+## 8) `password_reset_tokens` — 비밀번호 재설정 〔운영 중〕
 
-**현재 상태**: `_passwordResetTokens = new Map()` 인메모리 ([auth.js:20](../backend/src/routes/auth.js#L20)). TTL 15분.
+비밀번호 찾기·재설정 흐름에서 사용. TTL은 `PASSWORD_RESET_TTL_MS` 환경변수(기본 15분). 관련 코드:
+- [auth.js:200](../backend/src/routes/auth.js#L200) `/forgot-password` — 기존 미사용 토큰 정리 + insert + 메일 발송
+- [auth.js:231](../backend/src/routes/auth.js#L231) `/verify-reset-token` — `expires_at`·`used_at` 검증
+- [auth.js:253](../backend/src/routes/auth.js#L253) `/reset-password` — 검증 → 비밀번호 업데이트 → `used_at` 세팅 → 모든 세션 revoke
 
-**한계**:
-- 서버 재시작 시 진행 중인 재설정 링크 모두 만료
-- 다중 인스턴스(로드 밸런서) 운영 불가 — sticky session 필요
-- 단일 인스턴스·15분 단기 데이터라 소규모 운영에선 무방
-
-### 권장 스키마 (DB 분리 시)
+### 컬럼
 
 | 컬럼 | 타입 | NOT NULL | 기본값 | 설명 |
 |------|------|----------|--------|------|
 | `token` | TEXT | ✅ | — | PK — `crypto.randomBytes(32).toString('hex')` |
 | `user_id` | UUID | ✅ | — | FK → `users` ON DELETE CASCADE |
 | `expires_at` | TIMESTAMPTZ | ✅ | — | 발급 시 + 15분 |
-| `used_at` | TIMESTAMPTZ |  | — | 1회용 보장 |
+| `used_at` | TIMESTAMPTZ |  | — | 1회용 보장 — 세팅되면 무효 |
 | `created_at` | TIMESTAMPTZ | ✅ | `now()` | |
 
-운영 노트: `pg_cron` 으로 `expires_at < now() - 1d` 정리.
+### 인덱스 & 제약
+
+- PK: `token`
+- FK: `user_id` ON DELETE CASCADE
+- partial index: `(user_id) WHERE used_at IS NULL` — 동일 유저 활성 토큰 조회·정리
+- index: `(expires_at)` — `pg_cron` 정리용
+
+### 참고
+
+- 동일 유저가 재발급 시 기존 미사용 토큰은 DELETE (rolling token).
+- 만료·사용된 토큰은 `pg_cron` 일일 잡으로 1일 후 삭제 권장 (sql_schema/README 참조).
+
+마이그레이션: `sql_schema/007_password_reset_tokens.sql`.
 
 ---
 
-## 9) `email_verification_codes` — 이메일 변경 6자리 〔후보〕
+## 9) `email_verification_codes` — 이메일 변경 6자리 〔운영 중〕
 
-**현재 상태**: `_emailChangeCodes = new Map()` 인메모리 ([auth.js:21](../backend/src/routes/auth.js#L21)). TTL 5분, user_id 단일 키.
+프로필에서 이메일 변경 시 6자리 인증 코드 발송·검증. TTL은 `EMAIL_CODE_TTL_MS` 환경변수(기본 5분). 관련 코드:
+- [auth.js:331](../backend/src/routes/auth.js#L331) `/email/send-code` — 기존 미인증 코드 정리 + insert + 메일 발송
+- [auth.js:365](../backend/src/routes/auth.js#L365) `/email/verify-code` — 검증 → users.email 업데이트 → `verified_at` 세팅
 
-**한계**: §8 과 동일. 다만 유효시간 5분이라 영향 더 작음.
-
-### 권장 스키마 (DB 분리 시)
+### 컬럼
 
 | 컬럼 | 타입 | NOT NULL | 기본값 | 설명 |
 |------|------|----------|--------|------|
 | `id` | BIGSERIAL | ✅ | — | PK |
 | `user_id` | UUID | ✅ | — | FK → `users` ON DELETE CASCADE |
-| `email` | TEXT | ✅ | — | 변경 후 이메일 주소 |
-| `code` | CHAR(6) | ✅ | — | 6자리 숫자 (`crypto.randomInt`) |
+| `email` | TEXT | ✅ | — | 변경 후 적용할 이메일 주소 |
+| `code` | CHAR(6) | ✅ | — | 6자리 숫자 (`crypto.randomInt(0, 1_000_000)`) |
 | `expires_at` | TIMESTAMPTZ | ✅ | — | 발급 시 + 5분 |
-| `verified_at` | TIMESTAMPTZ |  | — | 인증 완료 시각 |
+| `verified_at` | TIMESTAMPTZ |  | — | 인증 완료 시각 — NULL 이면 미사용 |
 | `created_at` | TIMESTAMPTZ | ✅ | `now()` | |
+
+### 인덱스 & 제약
+
+- PK: `id`
+- FK: `user_id` ON DELETE CASCADE
+- partial index: `(user_id, expires_at DESC) WHERE verified_at IS NULL` — 활성 코드 조회
+- index: `(expires_at)` — `pg_cron` 정리용
+
+### 참고
+
+- 동일 유저의 미인증 코드는 새 발급 시 DELETE — 한 유저당 활성 코드 1개 보장.
+- 가장 최근에 발급된 미인증 코드만 검증 (`order by created_at desc limit 1`).
+
+마이그레이션: `sql_schema/008_email_verification_codes.sql`.
 
 ---
 
@@ -377,15 +401,15 @@ AI Flask 서버 `/predict` 응답의 `prediction.top3`.
 | P4 | 이메일 6자리 인증 부재 | `/api/auth/email/{send,verify}-code` |
 | P5/P8 | 세션 관리 부재 | `user_sessions` + 5개 라우트 |
 | P6 | 알림 설정 저장 안 됨 | `notification_preferences` + GET/PATCH |
+| §8 | 비밀번호 재설정 토큰 인메모리 | `password_reset_tokens` 테이블 + auth.js DB 리팩터 |
+| §9 | 이메일 인증 코드 인메모리 | `email_verification_codes` 테이블 + auth.js DB 리팩터 |
 
-### 🟡 미해결 (DB 분리 권장)
+### 🟡 미해결 (정규화 권장)
 
 | ID | 항목 | 권장 시점 |
 |----|------|----------|
 | B4 | `chat_history` race condition | §7 `chat_messages` 정규화 시 자연 해결 |
 | §7 | `chat_history` JSONB → `chat_messages` | 채팅 검색·통계 요구사항 발생 시 |
-| §8 | 비밀번호 재설정 토큰 인메모리 | 다중 인스턴스 운영 시 |
-| §9 | 이메일 인증 코드 인메모리 | 다중 인스턴스 운영 시 |
 
 ### 🔵 구조 정규화 (중기)
 
@@ -418,9 +442,10 @@ AI Flask 서버 `/predict` 응답의 `prediction.top3`.
 
 ## 검증 체크리스트
 
-- [x] `backend/src/routes/{auth,analyze,records,users}.js` 의 모든 `.from('테이블')` 호출이 §1~§5 에 매핑됨
+- [x] `backend/src/routes/{auth,analyze,records,users}.js` 의 모든 `.from('테이블')` 호출이 §1~§5·§8·§9 에 매핑됨
 - [x] 프론트엔드 회원가입·프로필·my_analyze·record_detail 의 모든 필드가 §1~§5 컬럼으로 추적 가능
 - [x] AI 서버 `/predict`·`/report` 응답 필드가 JSONB 예시에 반영됨
-- [x] `sql_schema/001~006*.sql` 마이그레이션과 §1~§6 스키마 정합성 일치
+- [x] `sql_schema/001~008*.sql` 마이그레이션과 §1~§9 스키마 정합성 일치
+- [x] 비밀번호 재설정·이메일 인증 인메모리 Map → DB 영속화 완료
 - [ ] RLS 정책 SQL 작성 (후속 작업)
-- [ ] §7~§9 인메모리·JSONB → DB 분리 (다중 인스턴스 운영 시점에 진행)
+- [ ] §7 `chat_history` JSONB → `chat_messages` 정규화 (요구사항 발생 시)
