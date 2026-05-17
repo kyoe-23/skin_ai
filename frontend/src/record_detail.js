@@ -95,6 +95,9 @@ async function loadRecordDetail() {
     if (savedChat.length > 0) {
       renderChatHistory(savedChat);
     }
+
+    // 북마크 상태 반영 (서버 응답 기반)
+    _setBookmarkUI(!!r.is_bookmarked);
   } catch (err) {
     if (err.message === 'SESSION_EXPIRED') return;
     console.error('기록 상세 로드 실패:', err);
@@ -105,24 +108,42 @@ loadRecordDetail();
 
 
 // ── 북마크 토글 ──────────────────────────────────────
-let bookmarked = false;
-function bookmarkRecord() {
-  bookmarked = !bookmarked;
+let _bookmarked = false;
+
+function _setBookmarkUI(state) {
+  _bookmarked = state;
   const btn = document.getElementById('bookmarkBtn');
-  if (bookmarked) {
+  if (!btn) return;
+  if (state) {
     btn.style.borderColor = '#f59e0b';
     btn.style.color = '#f59e0b';
     btn.style.background = '#fffbeb';
-    showToast('북마크에 저장됐어요');
   } else {
     btn.style.borderColor = '';
     btn.style.color = '';
     btn.style.background = '';
-    showToast('북마크가 해제됐어요');
   }
-  // ── DB 팀 연동 영역 ──────────────────────────────
-  // TODO: POST /api/records/:id/bookmark
-  // ── DB 팀 연동 영역 끝 ──────────────────────────
+}
+
+async function bookmarkRecord() {
+  if (!_currentRecordId) return;
+  const willBookmark = !_bookmarked;
+
+  // 낙관적 업데이트
+  _setBookmarkUI(willBookmark);
+
+  try {
+    const res = await apiFetch(`/api/records/${_currentRecordId}/bookmark`, {
+      method: willBookmark ? 'POST' : 'DELETE',
+    });
+    if (!res.ok) throw new Error();
+    showToast(willBookmark ? '북마크에 저장됐어요' : '북마크가 해제됐어요');
+  } catch (err) {
+    if (err && err.message === 'SESSION_EXPIRED') return;
+    // 실패 시 원복
+    _setBookmarkUI(!willBookmark);
+    showToast('북마크 처리에 실패했습니다', 'error');
+  }
 }
 
 

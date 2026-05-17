@@ -6,6 +6,7 @@ require('dotenv').config();
 const authRoutes    = require('./routes/auth');
 const analyzeRoutes = require('./routes/analyze');
 const recordsRoutes = require('./routes/records');
+const usersRoutes   = require('./routes/users');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.get('/', (req, res) => res.redirect('/index.html'));
 app.use('/api/auth',    authRoutes);
 app.use('/api/analyze', analyzeRoutes);
 app.use('/api/records', recordsRoutes);
+app.use('/api/users',   usersRoutes);
 
 // ── 서버 실행 ──
 const PORT = process.env.PORT || 3000;

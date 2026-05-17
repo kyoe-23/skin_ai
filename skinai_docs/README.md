@@ -14,3 +14,5 @@ SkinAI 프로젝트 각 파트별 기획 및 설계 문서.
 | [data-dataset-15-memoized-starlight.md](data-dataset-15-memoized-starlight.md) | DS15 통합 기획 · 전처리 호환성 · 멀티헤드 설계 |
 | [llm_api_research.md](llm_api_research.md) | LLM API 통합 가이드 |
 | [part8_ood_filter.md](part8_ood_filter.md) | 비-피부 이미지 거절 기능 (OOD Filter) 기획안 |
+| [part9_llm_architecture.md](part9_llm_architecture.md) | LLM 리포트·채팅 아키텍처 |
+| [part10_db_schema.md](part10_db_schema.md) | Supabase 테이블 기술서 (커뮤니티 제외 · 운영 중 + 후보 스키마) |

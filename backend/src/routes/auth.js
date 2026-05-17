@@ -1,294 +1,409 @@
-const express  = require('express');
+const express   = require('express');
 const bcrypt    = require('bcryptjs');
-const jwt       = require('jsonwebtoken');
 const crypto    = require('crypto');
 const nodemailer = require('nodemailer');
-const supabase  = require('../config/supabase');
+
+const supabase = require('../config/supabase');
 const { authenticateToken } = require('../middleware/auth');
+const {
+  HTTP_STATUS, ERROR_MESSAGES, AUTH_CONFIG, STORAGE_BUCKETS,
+} = require('../constants');
+const {
+  issueTokenAndSession, revokeSession, revokeAllSessions,
+} = require('../utils/sessions');
 
 const router = express.Router();
 
-// 비밀번호 재설정 토큰 저장소 (메모리) — token → { email, expires }
-const resetTokens = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, data] of resetTokens) {
-    if (data.expires < now) resetTokens.delete(token);
-  }
-}, 10 * 60 * 1000);
+// ─────────────────────────────────────────────────────
+// 인메모리 토큰·코드 저장소 (TTL 자동 정리)
+// ─────────────────────────────────────────────────────
+const _passwordResetTokens = new Map();   // token   → { email, expires }
+const _emailChangeCodes    = new Map();   // user_id → { newEmail, code, expires }
 
+const _cleanupExpired = () => {
+  const now = Date.now();
+  for (const [k, v] of _passwordResetTokens) if (v.expires < now) _passwordResetTokens.delete(k);
+  for (const [k, v] of _emailChangeCodes)    if (v.expires < now) _emailChangeCodes.delete(k);
+};
+setInterval(_cleanupExpired, 10 * 60 * 1000);
+
+// ─────────────────────────────────────────────────────
+// SMTP
+// ─────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
   host:   process.env.SMTP_HOST,
   port:   Number(process.env.SMTP_PORT) || 587,
   secure: Number(process.env.SMTP_PORT) === 465,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
+  auth:   { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 });
 
+const _emailFromAddress = () => process.env.EMAIL_FROM || process.env.SMTP_USER;
+
+const _sendPasswordResetMail = (toEmail, name, resetLink) => transporter.sendMail({
+  from: _emailFromAddress(),
+  to:   toEmail,
+  subject: '[SkinAI] 비밀번호 재설정 안내',
+  html: `
+    <div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 28px;border:1px solid #e5e7eb;border-radius:16px;">
+      <div style="text-align:center;margin-bottom:28px;">
+        <span style="font-size:22px;font-weight:800;color:#1a1a2e;">Skin<span style="color:#2563eb;">AI</span></span>
+      </div>
+      <h2 style="font-size:18px;font-weight:700;color:#111827;margin-bottom:10px;">비밀번호 재설정</h2>
+      <p style="color:#6b7280;font-size:14px;line-height:1.7;margin-bottom:28px;">
+        안녕하세요, <strong>${name}</strong>님.<br>
+        아래 버튼을 클릭하여 새 비밀번호를 설정하세요.<br>
+        이 링크는 <strong>${AUTH_CONFIG.PASSWORD_RESET_TTL_MS / 60000}분</strong> 후 만료됩니다.
+      </p>
+      <a href="${resetLink}" style="display:block;text-align:center;background:#2563eb;color:#fff;padding:14px 24px;border-radius:10px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:24px;">비밀번호 재설정하기</a>
+      <p style="font-size:12px;color:#9ca3af;line-height:1.6;">
+        버튼이 클릭되지 않으면 아래 링크를 복사하여 브라우저에 붙여넣으세요.<br>
+        <a href="${resetLink}" style="color:#2563eb;word-break:break-all;">${resetLink}</a>
+      </p>
+    </div>`,
+});
+
+const _sendEmailChangeCodeMail = (toEmail, code) => transporter.sendMail({
+  from: _emailFromAddress(),
+  to:   toEmail,
+  subject: '[SkinAI] 이메일 변경 인증 코드',
+  html: `
+    <div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 28px;border:1px solid #e5e7eb;border-radius:16px;">
+      <h2 style="font-size:18px;font-weight:700;color:#111827;margin-bottom:14px;">이메일 변경 인증</h2>
+      <p style="color:#6b7280;font-size:14px;line-height:1.7;margin-bottom:20px;">
+        아래 6자리 코드를 입력해 이메일 변경을 완료하세요.<br>
+        이 코드는 <strong>${AUTH_CONFIG.EMAIL_CODE_TTL_MS / 60000}분</strong> 후 만료됩니다.
+      </p>
+      <div style="text-align:center;font-size:36px;font-weight:800;letter-spacing:12px;color:#2563eb;padding:24px;background:#f3f4f6;border-radius:12px;">${code}</div>
+    </div>`,
+});
+
+// ─────────────────────────────────────────────────────
 // 회원가입
+// ─────────────────────────────────────────────────────
 router.post('/signup', async (req, res) => {
-  const { name, email, password, role, affiliation, year } = req.body;
+  const { name, email, password, role, affiliation, year, bio } = req.body;
 
   if (!name || !email || !password || !role || !affiliation) {
-    return res.status(400).json({ message: '필수 항목을 모두 입력해주세요.' });
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.REQUIRED_FIELDS });
+  }
+  if (password.length < AUTH_CONFIG.PASSWORD_MIN_LENGTH) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.PASSWORD_TOO_SHORT });
   }
 
   try {
     const { data: existing } = await supabase
-      .from('users')
-      .select('user_id')
-      .eq('email', email)
-      .single();
+      .from('users').select('user_id').eq('email', email).maybeSingle();
 
     if (existing) {
-      return res.status(409).json({ message: '이미 가입된 이메일입니다.' });
+      return res.status(HTTP_STATUS.CONFLICT).json({ message: ERROR_MESSAGES.EMAIL_DUPLICATE });
     }
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const password_hash = await bcrypt.hash(password, AUTH_CONFIG.BCRYPT_ROUNDS);
 
-    const { data, error } = await supabase
+    const { data: user, error } = await supabase
       .from('users')
-      .insert([{ name, email, password_hash, role, affiliation, year }])
+      .insert([{ name, email, password_hash, role, affiliation, year, bio: bio || null }])
       .select()
       .single();
-
     if (error) throw error;
 
-    const token = jwt.sign(
-      { user_id: data.user_id, role: data.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    const { token } = await issueTokenAndSession({
+      userId: user.user_id, role: user.role, req,
+    });
 
-    return res.status(201).json({
+    return res.status(HTTP_STATUS.CREATED).json({
       message: '회원가입이 완료됐습니다.',
       token,
       user: {
-        user_id: data.user_id,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        affiliation: data.affiliation,
+        user_id:     user.user_id,
+        name:        user.name,
+        email:       user.email,
+        role:        user.role,
+        affiliation: user.affiliation,
       },
     });
-
   } catch (err) {
     console.error('signup 오류:', err.message);
-    return res.status(500).json({ message: err.message });
+    return res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
   }
 });
 
+// ─────────────────────────────────────────────────────
 // 이메일 중복 확인
+// ─────────────────────────────────────────────────────
 router.get('/check-email', async (req, res) => {
   const { email } = req.query;
-  if (!email) return res.status(400).json({ message: '이메일을 입력해주세요.' });
+  if (!email) return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.EMAIL_REQUIRED });
 
   try {
-    const { data } = await supabase
-      .from('users')
-      .select('user_id')
-      .eq('email', email)
-      .single();
+    const { data } = await supabase.from('users').select('user_id').eq('email', email).maybeSingle();
     return res.json({ exists: !!data });
   } catch {
     return res.json({ exists: false });
   }
 });
 
+// ─────────────────────────────────────────────────────
 // 로그인
+// ─────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ message: '이메일과 비밀번호를 입력해주세요.' });
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.REQUIRED_FIELDS });
   }
 
   try {
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
+    const { data: user } = await supabase
+      .from('users').select('*').eq('email', email).maybeSingle();
 
-    if (error || !user) {
-      return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: ERROR_MESSAGES.LOGIN_INVALID });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다.' });
-    }
-
-    const token = jwt.sign(
-      { user_id: user.user_id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    const { token } = await issueTokenAndSession({
+      userId: user.user_id, role: user.role, req,
+    });
 
     return res.json({
       message: '로그인 성공',
       token,
       user: {
-        user_id: user.user_id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+        user_id:     user.user_id,
+        name:        user.name,
+        email:       user.email,
+        role:        user.role,
         affiliation: user.affiliation,
       },
     });
-
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    console.error('login 오류:', err.message);
+    return res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
   }
 });
 
-// 비밀번호 찾기: 재설정 링크 발송
+// ─────────────────────────────────────────────────────
+// 로그아웃 (현재 세션만)
+// ─────────────────────────────────────────────────────
+router.post('/logout', authenticateToken, async (req, res) => {
+  try {
+    await revokeSession(req.user.session_id);
+    res.json({ message: '로그아웃되었습니다.' });
+  } catch (err) {
+    console.error('logout 오류:', err.message);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
+  }
+});
+
+// ─────────────────────────────────────────────────────
+// 비밀번호 찾기 — 재설정 링크 발송
+// ─────────────────────────────────────────────────────
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ message: '이메일을 입력해주세요.' });
+  if (!email) return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.EMAIL_REQUIRED });
 
   try {
     const { data: user } = await supabase
-      .from('users')
-      .select('name')
-      .eq('email', email)
-      .single();
+      .from('users').select('name').eq('email', email).maybeSingle();
 
-    // 이메일 존재 여부 노출 방지 — 항상 성공 응답
-    if (!user) {
-      return res.json({ message: '재설정 링크를 발송했습니다.' });
-    }
+    // 이메일 존재 여부 노출 방지 — 항상 동일 응답
+    if (!user) return res.json({ message: ERROR_MESSAGES.RESET_SENT });
 
-    for (const [token, data] of resetTokens) {
-      if (data.email === email) resetTokens.delete(token);
+    // 동일 이메일의 기존 미사용 토큰 제거
+    for (const [t, d] of _passwordResetTokens) {
+      if (d.email === email) _passwordResetTokens.delete(t);
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    resetTokens.set(token, { email, expires: Date.now() + 15 * 60 * 1000 });
-
-    const resetLink = `${process.env.FRONTEND_URL}/reset_password.html?token=${token}`;
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || process.env.SMTP_USER,
-      to:   email,
-      subject: '[SkinAI] 비밀번호 재설정 안내',
-      html: `
-        <div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 28px;border:1px solid #e5e7eb;border-radius:16px;">
-          <div style="text-align:center;margin-bottom:28px;">
-            <span style="font-size:22px;font-weight:800;color:#1a1a2e;">Skin<span style="color:#2563eb;">AI</span></span>
-          </div>
-          <h2 style="font-size:18px;font-weight:700;color:#111827;margin-bottom:10px;">비밀번호 재설정</h2>
-          <p style="color:#6b7280;font-size:14px;line-height:1.7;margin-bottom:28px;">
-            안녕하세요, <strong>${user.name}</strong>님.<br>
-            아래 버튼을 클릭하여 새 비밀번호를 설정하세요.<br>
-            이 링크는 <strong>15분</strong> 후 만료됩니다.
-          </p>
-          <a href="${resetLink}"
-             style="display:block;text-align:center;background:#2563eb;color:#fff;padding:14px 24px;border-radius:10px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:24px;">
-            비밀번호 재설정하기
-          </a>
-          <p style="font-size:12px;color:#9ca3af;line-height:1.6;">
-            버튼이 클릭되지 않으면 아래 링크를 복사하여 브라우저에 붙여넣으세요.<br>
-            <a href="${resetLink}" style="color:#2563eb;word-break:break-all;">${resetLink}</a>
-          </p>
-          <hr style="border:none;border-top:1px solid #f3f4f6;margin:20px 0;">
-          <p style="font-size:12px;color:#c4cad4;text-align:center;">
-            본인이 요청하지 않은 경우 이 메일을 무시하세요.
-          </p>
-        </div>
-      `,
+    _passwordResetTokens.set(token, {
+      email, expires: Date.now() + AUTH_CONFIG.PASSWORD_RESET_TTL_MS,
     });
 
-    return res.json({ message: '재설정 링크를 발송했습니다.' });
+    const resetLink = `${process.env.FRONTEND_URL}/reset_password.html?token=${token}`;
+    await _sendPasswordResetMail(email, user.name, resetLink);
 
+    return res.json({ message: ERROR_MESSAGES.RESET_SENT });
   } catch (err) {
     console.error('forgot-password 오류:', err.message);
-    return res.status(500).json({ message: '메일 발송 중 오류가 발생했습니다: ' + err.message });
+    return res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
   }
 });
 
-// 비밀번호 재설정: 토큰 유효성 확인
 router.get('/verify-reset-token', (req, res) => {
   const { token } = req.query;
-  if (!token) return res.status(400).json({ valid: false });
-
-  const data = resetTokens.get(token);
+  const data = token ? _passwordResetTokens.get(token) : null;
   if (!data || data.expires < Date.now()) {
-    return res.status(400).json({ valid: false, message: '링크가 만료되었거나 유효하지 않습니다.' });
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      valid: false, message: ERROR_MESSAGES.RESET_LINK_INVALID,
+    });
   }
   return res.json({ valid: true });
 });
 
-// 비밀번호 재설정: 새 비밀번호 저장
 router.post('/reset-password', async (req, res) => {
   const { token, password } = req.body;
-
   if (!token || !password) {
-    return res.status(400).json({ message: '토큰과 새 비밀번호를 입력해주세요.' });
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.REQUIRED_FIELDS });
   }
-  if (password.length < 8) {
-    return res.status(400).json({ message: '비밀번호는 8자 이상이어야 합니다.' });
+  if (password.length < AUTH_CONFIG.PASSWORD_MIN_LENGTH) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.PASSWORD_TOO_SHORT });
   }
 
-  const data = resetTokens.get(token);
+  const data = _passwordResetTokens.get(token);
   if (!data || data.expires < Date.now()) {
-    return res.status(400).json({ message: '링크가 만료되었거나 이미 사용된 링크입니다.' });
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.RESET_LINK_INVALID });
   }
 
   try {
-    const password_hash = await bcrypt.hash(password, 10);
-
-    const { error } = await supabase
+    const password_hash = await bcrypt.hash(password, AUTH_CONFIG.BCRYPT_ROUNDS);
+    const { data: updated, error } = await supabase
       .from('users')
-      .update({ password_hash })
-      .eq('email', data.email);
-
+      .update({ password_hash, password_changed_at: new Date().toISOString() })
+      .eq('email', data.email)
+      .select('user_id')
+      .single();
     if (error) throw error;
 
-    resetTokens.delete(token);
-    return res.json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
+    // 모든 기존 세션 무효화 (탈취 대응)
+    await revokeAllSessions(updated.user_id);
 
+    _passwordResetTokens.delete(token);
+    return res.json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
   } catch (err) {
     console.error('reset-password 오류:', err.message);
-    return res.status(500).json({ message: '비밀번호 변경 중 오류가 발생했습니다.' });
+    return res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
   }
 });
 
-// 회원 탈퇴 — 유저 데이터 전체 삭제
-router.delete('/withdraw', authenticateToken, async (req, res) => {
-  const userId = req.user.user_id;
+// ─────────────────────────────────────────────────────
+// P3 — 비밀번호 변경 (로그인 상태)
+// ─────────────────────────────────────────────────────
+router.post('/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.REQUIRED_FIELDS });
+  }
+  if (newPassword.length < AUTH_CONFIG.PASSWORD_MIN_LENGTH) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.PASSWORD_TOO_SHORT });
+  }
 
   try {
-    // 1. Storage 이미지 삭제
-    const { data: files } = await supabase.storage
-      .from('skin-images')
-      .list(String(userId));
-
-    if (files && files.length > 0) {
-      const paths = files.map(f => `${userId}/${f.name}`);
-      await supabase.storage.from('skin-images').remove(paths);
+    const { data: user, error: fetchErr } = await supabase
+      .from('users').select('password_hash').eq('user_id', req.user.user_id).single();
+    if (fetchErr || !user) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: ERROR_MESSAGES.AUTH_REQUIRED });
     }
 
-    // 2. 분석 기록 삭제
-    await supabase.from('analysis_records').delete().eq('user_id', userId);
+    const ok = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!ok) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: ERROR_MESSAGES.PASSWORD_MISMATCH });
+    }
 
-    // 3. 커뮤니티 데이터 삭제 (테이블이 있는 경우)
+    const sameAsOld = await bcrypt.compare(newPassword, user.password_hash);
+    if (sameAsOld) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.PASSWORD_SAME });
+    }
+
+    const password_hash = await bcrypt.hash(newPassword, AUTH_CONFIG.BCRYPT_ROUNDS);
+    const { error: updErr } = await supabase
+      .from('users')
+      .update({ password_hash, password_changed_at: new Date().toISOString() })
+      .eq('user_id', req.user.user_id);
+    if (updErr) throw updErr;
+
+    // 다른 모든 세션 무효화 — 현재 세션은 유지하기 위해 새 토큰 발급
+    await revokeAllSessions(req.user.user_id, req.user.session_id);
+
+    res.json({ message: '비밀번호가 변경되었습니다.' });
+  } catch (err) {
+    console.error('change-password 오류:', err.message);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
+  }
+});
+
+// ─────────────────────────────────────────────────────
+// P4 — 이메일 변경 인증 코드 발송
+// ─────────────────────────────────────────────────────
+router.post('/email/send-code', authenticateToken, async (req, res) => {
+  const { newEmail } = req.body;
+  if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.EMAIL_INVALID });
+  }
+
+  try {
+    const { data: dup } = await supabase
+      .from('users').select('user_id').eq('email', newEmail).maybeSingle();
+    if (dup) {
+      return res.status(HTTP_STATUS.CONFLICT).json({ message: ERROR_MESSAGES.EMAIL_DUPLICATE });
+    }
+
+    // 6자리 코드 생성 — crypto 기반
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(AUTH_CONFIG.EMAIL_CODE_LENGTH, '0');
+    _emailChangeCodes.set(req.user.user_id, {
+      newEmail, code, expires: Date.now() + AUTH_CONFIG.EMAIL_CODE_TTL_MS,
+    });
+
+    await _sendEmailChangeCodeMail(newEmail, code);
+    res.json({ message: '인증 코드를 발송했습니다.' });
+  } catch (err) {
+    console.error('email/send-code 오류:', err.message);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
+  }
+});
+
+// 코드 검증 후 이메일 변경 적용
+router.post('/email/verify-code', authenticateToken, async (req, res) => {
+  const { code } = req.body;
+  if (!code || String(code).length !== AUTH_CONFIG.EMAIL_CODE_LENGTH) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.CODE_LENGTH });
+  }
+
+  const entry = _emailChangeCodes.get(req.user.user_id);
+  if (!entry || entry.expires < Date.now() || entry.code !== String(code)) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.CODE_INVALID });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('users').update({ email: entry.newEmail }).eq('user_id', req.user.user_id);
+    if (error) throw error;
+
+    _emailChangeCodes.delete(req.user.user_id);
+    res.json({ message: '이메일이 변경되었습니다.', email: entry.newEmail });
+  } catch (err) {
+    console.error('email/verify-code 오류:', err.message);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
+  }
+});
+
+// ─────────────────────────────────────────────────────
+// 회원 탈퇴
+// ─────────────────────────────────────────────────────
+router.delete('/withdraw', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+  try {
+    // 1. Storage 이미지 삭제 (skin-images 버킷의 유저 폴더)
+    const { data: files } = await supabase.storage
+      .from(STORAGE_BUCKETS.SKIN_IMAGES).list(String(userId));
+    if (files && files.length > 0) {
+      const paths = files.map(f => `${userId}/${f.name}`);
+      await supabase.storage.from(STORAGE_BUCKETS.SKIN_IMAGES).remove(paths);
+    }
+
+    // 2. ON DELETE CASCADE 가 걸려 있으면 users 삭제만으로 연관 행 정리됨.
+    //    안전망으로 명시적 삭제 — 커뮤니티는 best-effort
+    await supabase.from('analysis_records').delete().eq('user_id', userId);
     try {
       await supabase.from('comments').delete().eq('user_id', userId);
       await supabase.from('posts').delete().eq('user_id', userId);
     } catch (_) { /* 테이블 미존재 시 무시 */ }
 
-    // 4. 유저 계정 삭제
     const { error } = await supabase.from('users').delete().eq('user_id', userId);
     if (error) throw error;
 
-    return res.json({ message: '계정이 삭제되었습니다.' });
-
+    res.json({ message: '계정이 삭제되었습니다.' });
   } catch (err) {
     console.error('[auth/withdraw]', err.message);
-    return res.status(500).json({ message: '탈퇴 처리 중 오류가 발생했습니다.' });
+    res.status(HTTP_STATUS.SERVER_ERROR).json({ message: ERROR_MESSAGES.WITHDRAW_FAIL });
   }
 });
 

@@ -7,17 +7,19 @@ const FormData = require('form-data');
 const { authenticateToken } = require('../middleware/auth');
 const supabase = require('../config/supabase');
 const { applyMaskingPipeline } = require('../utils/masking');
+const { HTTP_STATUS, ERROR_MESSAGES, STORAGE_BUCKETS } = require('../constants');
 
 const FLASK_URL = `http://localhost:${process.env.FLASK_PORT || 5001}`;
+const UPLOAD_MAX_BYTES = Number(process.env.UPLOAD_MAX_BYTES || 10 * 1024 * 1024);
+const ALLOWED_UPLOAD_MIME = ['image/jpeg', 'image/png'];
 
 const router = express.Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: UPLOAD_MAX_BYTES },
   fileFilter: (req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png'];
-    if (!allowed.includes(file.mimetype)) {
+    if (!ALLOWED_UPLOAD_MIME.includes(file.mimetype)) {
       return cb(new Error('JPG, PNG 파일만 허용됩니다.'));
     }
     cb(null, true);
@@ -35,7 +37,7 @@ router.post('/upload', authenticateToken, upload.single('image'), async (req, re
     const isJpeg = buf[0] === 0xFF && buf[1] === 0xD8;
     const isPng  = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47;
     if (!isJpeg && !isPng) {
-      return res.status(400).json({ message: '유효하지 않은 이미지 파일입니다.' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.IMAGE_INVALID });
     }
 
     // 2단계: EXIF 완전 제거 + orientation 보정
@@ -62,13 +64,13 @@ router.post('/upload', authenticateToken, upload.single('image'), async (req, re
     const filename = `${userId}/${crypto.randomUUID()}.png`;
 
     const { error: uploadError } = await supabase.storage
-      .from('skin-images')
+      .from(STORAGE_BUCKETS.SKIN_IMAGES)
       .upload(filename, processed, { contentType: 'image/png', upsert: false });
 
     if (uploadError) throw uploadError;
 
     const { data: urlData } = supabase.storage
-      .from('skin-images')
+      .from(STORAGE_BUCKETS.SKIN_IMAGES)
       .getPublicUrl(filename);
 
     const imageUrl = urlData.publicUrl;
@@ -174,12 +176,12 @@ router.delete('/records', authenticateToken, async (req, res) => {
 
     // Storage 이미지 삭제 (폴더 단위)
     const { data: files } = await supabase.storage
-      .from('skin-images')
+      .from(STORAGE_BUCKETS.SKIN_IMAGES)
       .list(String(userId));
 
     if (files && files.length > 0) {
       const paths = files.map(f => `${userId}/${f.name}`);
-      await supabase.storage.from('skin-images').remove(paths);
+      await supabase.storage.from(STORAGE_BUCKETS.SKIN_IMAGES).remove(paths);
     }
 
     res.json({ message: '학습 기록이 초기화되었습니다.' });
