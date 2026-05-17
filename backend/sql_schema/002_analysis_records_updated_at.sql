@@ -3,7 +3,7 @@
 -- 답 제출·채팅 추가 시각 추적 가능
 -- ─────────────────────────────────────────────────────────────
 
-ALTER TABLE analysis_records ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE analysis_records ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 DROP TRIGGER IF EXISTS trg_records_updated_at ON analysis_records;
 CREATE TRIGGER trg_records_updated_at
