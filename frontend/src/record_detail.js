@@ -3,6 +3,7 @@
 // ── 전역 상태 ──
 let _currentRecordId = null;
 let _chatContext     = {};
+let _chatMessages    = [];   // 멀티턴용 인메모리 이력
 
 const _AI_AVATAR_RD = `<div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>`;
 
@@ -73,10 +74,13 @@ async function loadRecordDetail() {
     const findingEl = document.getElementById('findingList');
     if (report && (report.summary || report.features)) {
       findingEl.innerHTML = [
-        report.summary   && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text">${report.summary}</div></div>`,
-        report.features  && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text">${report.features}</div></div>`,
-        report.advice    && `<div class="finding-item"><div class="finding-dot" style="background:#16a34a"></div><div class="finding-text">${report.advice}</div></div>`,
-        report.disclaimer && `<div class="finding-item" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;"><div class="finding-text" style="color:#92400e;font-size:12px;">${report.disclaimer}</div></div>`,
+        report.summary        && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text">${report.summary}</div></div>`,
+        report.mechanism      && `<div class="finding-item"><div class="finding-dot" style="background:#7c3aed"></div><div class="finding-text"><strong style="font-size:11px;color:#7c3aed;display:block;margin-bottom:2px;">발병 기전</strong>${report.mechanism}</div></div>`,
+        report.features       && `<div class="finding-item"><div class="finding-dot"></div><div class="finding-text"><strong style="font-size:11px;color:#2563eb;display:block;margin-bottom:2px;">임상 특징</strong>${report.features}</div></div>`,
+        report.triggers       && `<div class="finding-item"><div class="finding-dot" style="background:#d97706"></div><div class="finding-text"><strong style="font-size:11px;color:#d97706;display:block;margin-bottom:2px;">악화 요인</strong>${report.triggers}</div></div>`,
+
+        report.learning_point && `<div class="finding-item" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;"><strong style="font-size:11px;color:#16a34a;display:block;margin-bottom:2px;">핵심 학습 포인트</strong><div class="finding-text" style="color:#15803d;">${report.learning_point}</div></div>`,
+        report.disclaimer     && `<div class="finding-item" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;"><div class="finding-text" style="color:#92400e;font-size:12px;">${report.disclaimer}</div></div>`,
       ].filter(Boolean).join('');
     } else {
       findingEl.innerHTML = '<div style="font-size:13px;color:#c4cad4;padding:8px 0;">AI 소견 정보가 없습니다</div>';
@@ -85,11 +89,15 @@ async function loadRecordDetail() {
     // 채팅 컨텍스트 저장
     _chatContext = { class_name: info.ko, confidence: r.confidence, report };
 
-    // 저장된 채팅 기록 복원
+    // 저장된 채팅 기록 복원 (멀티턴 이력도 함께 초기화)
     const savedChat = r.chat_history || [];
+    _chatMessages = savedChat.map(m => ({ role: m.role, content: m.content }));
     if (savedChat.length > 0) {
       renderChatHistory(savedChat);
     }
+
+    // 북마크 상태 반영 (서버 응답 기반)
+    _setBookmarkUI(!!r.is_bookmarked);
   } catch (err) {
     if (err.message === 'SESSION_EXPIRED') return;
     console.error('기록 상세 로드 실패:', err);
@@ -100,24 +108,42 @@ loadRecordDetail();
 
 
 // ── 북마크 토글 ──────────────────────────────────────
-let bookmarked = false;
-function bookmarkRecord() {
-  bookmarked = !bookmarked;
+let _bookmarked = false;
+
+function _setBookmarkUI(state) {
+  _bookmarked = state;
   const btn = document.getElementById('bookmarkBtn');
-  if (bookmarked) {
+  if (!btn) return;
+  if (state) {
     btn.style.borderColor = '#f59e0b';
     btn.style.color = '#f59e0b';
     btn.style.background = '#fffbeb';
-    showToast('북마크에 저장됐어요');
   } else {
     btn.style.borderColor = '';
     btn.style.color = '';
     btn.style.background = '';
-    showToast('북마크가 해제됐어요');
   }
-  // ── DB 팀 연동 영역 ──────────────────────────────
-  // TODO: POST /api/records/:id/bookmark
-  // ── DB 팀 연동 영역 끝 ──────────────────────────
+}
+
+async function bookmarkRecord() {
+  if (!_currentRecordId) return;
+  const willBookmark = !_bookmarked;
+
+  // 낙관적 업데이트
+  _setBookmarkUI(willBookmark);
+
+  try {
+    const res = await apiFetch(`/api/records/${_currentRecordId}/bookmark`, {
+      method: willBookmark ? 'POST' : 'DELETE',
+    });
+    if (!res.ok) throw new Error();
+    showToast(willBookmark ? '북마크에 저장됐어요' : '북마크가 해제됐어요');
+  } catch (err) {
+    if (err && err.message === 'SESSION_EXPIRED') return;
+    // 실패 시 원복
+    _setBookmarkUI(!willBookmark);
+    showToast('북마크 처리에 실패했습니다', 'error');
+  }
 }
 
 
@@ -209,7 +235,7 @@ async function sendChat() {
     const res = await apiFetch('/api/analyze/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, context: _chatContext }),
+      body: JSON.stringify({ question, context: _chatContext, history: _chatMessages }),
     });
     const data = await res.json();
     const rawAnswer = data.answer || 'LLM이 비활성화되어 있습니다.';
@@ -220,8 +246,12 @@ async function sendChat() {
         ${_AI_AVATAR_RD}
         <div style="background:#f8fafc;border:1px solid #e8eaed;color:#374151;padding:12px 16px;border-radius:4px 16px 16px 16px;font-size:13px;line-height:1.7;">${safeA}</div>
       </div>`);
+    messagesEl.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     const ts = new Date().toISOString();
+    // 인메모리 이력에 누적 (다음 턴에 전달)
+    _chatMessages.push({ role: 'user', content: question, ts });
+    _chatMessages.push({ role: 'ai',   content: rawAnswer, ts });
     saveChatMessages([
       { role: 'user', content: question,   ts },
       { role: 'ai',   content: rawAnswer,  ts },
@@ -233,10 +263,26 @@ async function sendChat() {
         <div style="width:28px;height:28px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
         <div style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:4px 16px 16px 16px;font-size:13px;">오류가 발생했습니다. 다시 시도해주세요.</div>
       </div>`);
+    messagesEl.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
+
+// ── 기록 삭제 ────────────────────────────────────────
+async function deleteRecord() {
+  if (!_currentRecordId) return;
+  if (!confirm('이 분석 기록을 삭제하시겠습니까?')) return;
+
+  try {
+    const res = await apiFetch(`/api/records/${_currentRecordId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    location.href = 'my_analyze.html';
+  } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') return;
+    console.error('기록 삭제 실패:', err);
+    alert('기록 삭제에 실패했습니다.');
+  }
+}
 
 // ── 토스트 ───────────────────────────────────────────
 let toastTimer = null;

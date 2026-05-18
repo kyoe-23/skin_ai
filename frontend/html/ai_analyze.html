@@ -441,7 +441,7 @@
             placeholder="진단 결과에 대해 질문해보세요..."
             style="flex:1;border:none;outline:none;font-size:13px;font-family:inherit;resize:none;line-height:1.5;max-height:100px;overflow-y:auto;background:transparent;color:#1a1a2e;padding:0;margin:0;vertical-align:middle;"
             oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendChat();}"></textarea>
           <button onclick="sendChat()" id="chatSendBtn"
             style="width:36px;height:36px;border-radius:10px;background:#2563eb;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;"
             onmouseover="this.style.background='#1d4ed8'"

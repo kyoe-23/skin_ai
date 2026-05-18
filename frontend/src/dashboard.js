@@ -1,66 +1,144 @@
-// ═══════════════════════════════════════════════════
-//  dashboard.js  —  홈 대시보드 UI
-//
-//  [순수 프론트 영역]
-//    - 인사 문구, 날짜/시간대 기반 greeting
-//    - 취약 질환 바 애니메이션
-//
-//  [DB 팀 연동 필요 영역]
-//    - loadUserInfo()  : 로그인 유저 정보 표시
-//    - loadStats()     : 학습 통계 불러오기
-//    - loadRecentRecords() : 최근 학습 기록
-//    - loadStreak()    : 연속 학습일 및 주간 현황
-//    - loadWeakDiseases()  : 취약 질환 목록
-// ═══════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────
+// dashboard.js — 홈 대시보드
+// /api/users/me 로 최신 사용자 정보를 가져와 인사·아바타를 렌더링.
+// 통계 카드·취약 질환 UI는 현재 dashboard.html 에 존재하지 않으므로
+// 데이터 로더만 정의해두고, 매칭되는 요소가 있을 때만 채운다.
+// ─────────────────────────────────────────────────────
 
+const ROLE_LABELS = { resident: '전공의', student: '의대생', doctor: '전문의' };
+const roleLabel = (v) => ROLE_LABELS[v] || '';
 
 // ── 시간대별 인사말 ──────────────────────────────────
-(function setGreeting() {
-  const hour = new Date().getHours();
-  let greet = '안녕하세요';
-  if (hour >= 5  && hour < 12) greet = '좋은 아침이에요';
-  if (hour >= 12 && hour < 18) greet = '안녕하세요';
-  if (hour >= 18 && hour < 22) greet = '수고하셨어요';
-  if (hour >= 22 || hour < 5)  greet = '늦은 시간이네요';
-
-  const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-  const name = user.name || '사용자';
-  const role = user.role || 'resident';
-
-  const titleEl = document.getElementById('greetTitle');
-  if (titleEl) titleEl.textContent = `${greet}, ${name}님`;
-
-  const roleEl = document.getElementById('greetRole');
-  if (roleEl) roleEl.textContent = roleLabel(role);
-
-  const avatarEl = document.getElementById('navAvatar');
-  if (avatarEl) avatarEl.textContent = name.charAt(0);
-})();
-
-
-// ── 역할 레이블 ──────────────────────────────────────
-function roleLabel(v) {
-  return { resident: '전공의', student: '의대생' }[v] || '';
+function _greetingForHour(hour) {
+  if (hour >= 5  && hour < 12) return '좋은 아침이에요';
+  if (hour >= 18 && hour < 22) return '수고하셨어요';
+  if (hour >= 22 || hour < 5)  return '늦은 시간이네요';
+  return '안녕하세요';
 }
 
+function _renderGreeting(user) {
+  const greet = _greetingForHour(new Date().getHours());
+  const name = user?.name || '사용자';
+  const role = user?.role || 'resident';
+
+  const titleEl  = document.getElementById('greetTitle');
+  const roleEl   = document.getElementById('greetRole');
+  const avatarEl = document.getElementById('navAvatar');
+  const avatarImgEl = document.getElementById('navAvatarImg');
+
+  if (titleEl)  titleEl.textContent  = `${greet}, ${name}님`;
+  if (roleEl)   roleEl.textContent   = roleLabel(role);
+  if (avatarEl) avatarEl.textContent = name.charAt(0);
+  if (avatarImgEl && user?.avatar_url) {
+    avatarImgEl.src = user.avatar_url;
+    avatarImgEl.style.display = 'block';
+  }
+}
+
+// ── 최신 사용자 정보로 인사·아바타 갱신 ─────────────
+(async function loadUserInfo() {
+  const stored = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+  _renderGreeting(stored);
+
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  if (!token) return;
+
+  try {
+    const res = await apiFetch('/api/users/me');
+    if (!res.ok) return;
+    const { user } = await res.json();
+    _renderGreeting(user);
+    // localStorage 동기화 — 다른 페이지가 stale 데이터로 깜빡이지 않도록
+    const storage = localStorage.getItem('user') ? localStorage : sessionStorage;
+    storage.setItem('user', JSON.stringify(user));
+  } catch (err) {
+    if (err && err.message === 'SESSION_EXPIRED') return;
+  }
+})();
+
+// ── 학습 통계 로드 (매칭 요소 존재 시에만 갱신) ─────
+//   .stat-num[data-stat="total"]    → 분석 건수
+//   .stat-num[data-stat="diseases"] → 학습 질환 수
+//   .stat-num[data-stat="streak"]   → 연속 학습일
+//   .weak-bar[data-disease="xxx"]   → 취약 질환 바
+(async function loadStats() {
+  const hasStatEl  = document.querySelector('[data-stat]');
+  const hasWeakBar = document.querySelector('[data-disease]');
+  if (!hasStatEl && !hasWeakBar) return;
+
+  try {
+    const res = await apiFetch('/api/records');
+    if (!res.ok) return;
+    const { records } = await res.json();
+
+    if (hasStatEl) _renderStatCards(records);
+    if (hasWeakBar) _renderWeakDiseaseBars(records);
+  } catch (err) {
+    if (err && err.message === 'SESSION_EXPIRED') return;
+  }
+})();
+
+function _renderStatCards(records) {
+  const total    = records.length;
+  const diseases = new Set(records.map(r => r.primary_diagnosis).filter(Boolean)).size;
+  const streak   = _calcStreak(records);
+
+  const set = (key, val) => {
+    const el = document.querySelector(`[data-stat="${key}"]`);
+    if (el) el.textContent = val;
+  };
+  set('total', total);
+  set('diseases', diseases);
+  set('streak', streak);
+}
+
+function _calcStreak(records) {
+  const dates = new Set(records.map(r => (r.created_at || '').slice(0, 10)));
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+
+  const start = new Date(today);
+  if (!dates.has(todayStr)) start.setDate(start.getDate() - 1);
+
+  let streak = 0;
+  const d = new Date(start);
+  while (streak < 365) {
+    if (dates.has(d.toISOString().slice(0, 10))) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else break;
+  }
+  return streak;
+}
+
+// 가장 자주 학습한 질환을 비율(%) 로 바에 반영
+function _renderWeakDiseaseBars(records) {
+  const counts = records.reduce((acc, r) => {
+    const k = r.primary_diagnosis;
+    if (k) acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const max = Math.max(1, ...Object.values(counts));
+
+  document.querySelectorAll('[data-disease]').forEach(bar => {
+    const key = bar.dataset.disease;
+    const pct = Math.round(((counts[key] || 0) / max) * 100);
+    bar.style.width = '0%';
+    setTimeout(() => { bar.style.width = pct + '%'; }, 300);
+  });
+}
 
 // ── 로그아웃 ──────────────────────────────────────────
-function handleLogout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  sessionStorage.removeItem('token');
-  sessionStorage.removeItem('user');
-  window.location.href = 'login.html';
+async function handleLogout() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  try {
+    if (token) {
+      await apiFetch('/api/auth/logout', { method: 'POST' });
+    }
+  } catch (_) { /* 통신 실패해도 로컬 정리는 진행 */ }
+  finally {
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = 'login.html';
+  }
 }
-
-
-// ── 취약 질환 바 진입 애니메이션 ─────────────────────
-(function animateWeakBars() {
-  // 페이지 로드 후 바가 자연스럽게 채워지는 효과
-  const bars = document.querySelectorAll('.weak-bar');
-  bars.forEach(bar => {
-    const target = bar.style.width;
-    bar.style.width = '0%';
-    setTimeout(() => { bar.style.width = target; }, 300);
-  });
-})();
