@@ -225,12 +225,10 @@ async function handleRegister() {
       return;
     }
 
-    // 성공 → 임시 저장 데이터 전체 정리
+    // 성공 → 임시 저장 데이터 전체 정리 후 로그인 페이지로 이동
     sessionStorage.removeItem('privacyConsent');
     sessionStorage.removeItem('signupDraft');
-    document.getElementById('registerCard').style.display = 'none';
-    document.getElementById('successCard').classList.add('show');
-    window.scrollTo({ top:0, behavior:'smooth' });
+    window.location.href = 'login.html';
 
   } catch (err) {
     showBannerError('서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
