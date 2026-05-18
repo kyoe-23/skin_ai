@@ -1,10 +1,3 @@
-// ─────────────────────────────────────────────────────
-// dashboard.js — 홈 대시보드
-// /api/users/me 로 최신 사용자 정보를 가져와 인사·아바타를 렌더링.
-// 통계 카드·취약 질환 UI는 현재 dashboard.html 에 존재하지 않으므로
-// 데이터 로더만 정의해두고, 매칭되는 요소가 있을 때만 채운다.
-// ─────────────────────────────────────────────────────
-
 const ROLE_LABELS = { resident: '전공의', student: '의대생', doctor: '전문의' };
 const roleLabel = (v) => ROLE_LABELS[v] || '';
 
@@ -48,7 +41,6 @@ function _renderGreeting(user) {
     if (!res.ok) return;
     const { user } = await res.json();
     _renderGreeting(user);
-    // localStorage 동기화 — 다른 페이지가 stale 데이터로 깜빡이지 않도록
     const storage = localStorage.getItem('user') ? localStorage : sessionStorage;
     storage.setItem('user', JSON.stringify(user));
   } catch (err) {
