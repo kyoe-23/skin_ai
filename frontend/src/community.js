@@ -3,9 +3,9 @@ const ME = { id:'user_me', author:'김전공', role:'resident', avatar:'김', av
 
 // ── 데이터 ──
 let posts = [
-  { id:1, userId:'user_01', author:'박지현', role:'resident', avatar:'박', avatarColor:'linear-gradient(135deg,#2563eb,#7c3aed)', dept:'피부과', date:'2시간 전', tags:['여드름','감별진단'], title:'20대 여성, 뺨 부위 구진성 병변 — 여드름 vs 주사 감별 어떻게 하셨나요?', content:'외래에서 20대 초반 여성 환자 봤는데 뺨과 코 주위로 홍반성 구진이 산재해 있었습니다. 여드름과 주사를 감별해야 했는데 AI 분류 결과랑 제 소견이 달라서 공유해봅니다.\n\n병변 분포가 뺨 중심부에 집중되어 있고, 코 주변 홍조도 동반되어 있어서 주사를 먼저 고려했는데 AI는 87% 여드름으로 분류했네요.', media:[], likes:24, liked:false, views:142, comments:[] },
-  { id:2, userId:'user_02', author:'이준혁', role:'student', avatar:'이', avatarColor:'linear-gradient(135deg,#059669,#0d9488)', dept:'본과 3학년', date:'5시간 전', tags:['습진','질문'], title:'AI가 접촉성 피부염으로 분류했는데 아토피와 어떻게 구분하나요?', content:'실습 중에 찍은 케이스인데 AI 학습 결과 접촉성 피부염 85% 신뢰도로 나왔습니다. 분포 패턴이 아토피랑도 비슷해 보여서 선생님들 의견 구합니다.', media:[], likes:11, liked:false, views:89, comments:[] },
-  { id:3, userId:'user_03', author:'박민서', role:'student', avatar:'박', avatarColor:'linear-gradient(135deg,#059669,#10b981)', dept:'본과 2학년', date:'어제', tags:['색소 질환','멜라스마'], title:'멜라스마 vs 기미 — AI 분류 결과랑 교과서 소견이 다르게 나왔어요', content:'색소성 질환 공부하다가 올립니다. AI 분류 결과와 교과서 기술이 달라서 선배님들 의견 구합니다.', media:[], likes:14, liked:false, views:97, comments:[] }
+  { id:1, userId:'user_01', author:'박지현', role:'resident', avatar:'박', avatarColor:'linear-gradient(135deg,#2563eb,#7c3aed)', dept:'피부과', date:'2시간 전', tags:['여드름','감별진단'], title:'55세 여성, 코 주위 구진성 병변 — 여드름 vs 기저세포암 감별 어떻게 하셨나요?', content:'외래에서 55세 여성 환자 봤는데 코 주변에 진주빛 광택이 있는 구진이 관찰됐습니다. 여드름과 기저세포암을 감별해야 했는데 AI 분류 결과랑 제 소견이 달라서 공유해봅니다.\n\nAI는 89% 여드름으로 분류했지만 임상적으로는 초기 기저세포암 가능성도 배제하기 어려웠습니다. 장기간 햇볕 노출력도 있었고요.', media:[], likes:24, liked:false, views:142, comments:[] },
+  { id:2, userId:'user_02', author:'이준혁', role:'student', avatar:'이', avatarColor:'linear-gradient(135deg,#059669,#0d9488)', dept:'본과 3학년', date:'5시간 전', tags:['아토피피부염','질문'], title:'AI가 아토피피부염으로 분류했는데 건선과 어떻게 구분하나요?', content:'실습 중에 찍은 케이스인데 AI 분류 결과 아토피피부염 85% 신뢰도로 나왔습니다. 분포 패턴이 건선이랑도 비슷해 보여서 선생님들 의견 구합니다.', media:[], likes:11, liked:false, views:89, comments:[] },
+  { id:3, userId:'user_03', author:'박민서', role:'student', avatar:'박', avatarColor:'linear-gradient(135deg,#059669,#10b981)', dept:'본과 2학년', date:'어제', tags:['멜라닌세포모반','악성흑색종'], title:'멜라닌세포모반 vs 악성흑색종 — AI 분류 결과랑 교과서 소견이 다르게 나왔어요', content:'색소성 질환 공부하다가 올립니다. 같은 병변인데 AI는 멜라닌세포모반 72%로 분류했지만 교과서의 악성흑색종 소견과 겹치는 부분이 있어서 선배님들 의견 구합니다.', media:[], likes:14, liked:false, views:97, comments:[] }
 ];
 let nextId = 4;
 let currentPostId = null;
@@ -15,8 +15,8 @@ let tags = [];
 let currentFilter = '전체';
 let searchQuery = '';
 
-const DISEASE_TAGS = ['여드름','습진','건선','주사','지루성 피부염','색소 질환','두드러기','멜라스마','백반증','아토피','켈로이드','모낭염'];
-const TAG_COUNTS   = { '여드름':42,'습진':38,'건선':31,'주사':28,'지루성 피부염':24,'색소 질환':19,'두드러기':15,'멜라스마':12,'백반증':9,'아토피':33,'켈로이드':7,'모낭염':11 };
+const DISEASE_TAGS = ['여드름','건선','아토피피부염','광선각화증','기저세포암','멜라닌세포모반','악성흑색종','지루각화증','편평세포암','피부섬유종','혈관종'];
+const TAG_COUNTS   = { '여드름':42,'건선':31,'아토피피부염':33,'광선각화증':18,'기저세포암':14,'멜라닌세포모반':27,'악성흑색종':11,'지루각화증':16,'편평세포암':9,'피부섬유종':7,'혈관종':8 };
 
 // ── 유틸 ──
 function showToast(msg) {
@@ -26,8 +26,8 @@ function showToast(msg) {
 }
 function autoResize(el) { el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
 function roleBadge(role) {
-  const map={resident:'전공의',student:'의대생'};
-  const cls={resident:'badge-resident',student:'badge-student'};
+  const map={resident:'전공의',student:'의대생',doctor:'의사'};
+  const cls={resident:'badge-resident',student:'badge-student',doctor:'badge-doctor'};
   return `<span class="role-badge ${cls[role]||''}">${map[role]||''}</span>`;
 }
 function timeAgo(date) {

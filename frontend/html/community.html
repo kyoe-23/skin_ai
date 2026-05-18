@@ -70,6 +70,7 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
 .role-badge { padding:2px 7px; border-radius:4px; font-size:10px; font-weight:600; }
 .badge-resident { background:#eff6ff; color:#2563eb; }
 .badge-student { background:#f0fdf4; color:#16a34a; }
+.badge-doctor  { background:#fdf4ff; color:#9333ea; }
 .post-date { font-size:11px; color:#c4cad4; }
 
 .delete-btn { width:30px; height:30px; border-radius:8px; border:none; background:none; color:#d1d5db; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0; }
@@ -368,10 +369,10 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
       <div class="filter-bar" id="filterBar">
         <div class="filter-chip active" data-filter="전체" onclick="setFilter(this)">전체</div>
         <div class="filter-chip" data-filter="여드름" onclick="setFilter(this)">여드름</div>
-        <div class="filter-chip" data-filter="습진" onclick="setFilter(this)">습진</div>
         <div class="filter-chip" data-filter="건선" onclick="setFilter(this)">건선</div>
-        <div class="filter-chip" data-filter="지루성 피부염" onclick="setFilter(this)">지루성 피부염</div>
-        <div class="filter-chip" data-filter="색소 질환" onclick="setFilter(this)">색소 질환</div>
+        <div class="filter-chip" data-filter="아토피피부염" onclick="setFilter(this)">아토피피부염</div>
+        <div class="filter-chip" data-filter="기저세포암" onclick="setFilter(this)">기저세포암</div>
+        <div class="filter-chip" data-filter="악성흑색종" onclick="setFilter(this)">악성흑색종</div>
         <div class="search-wrap">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input class="search-input" type="text" placeholder="케이스 검색..." oninput="handleSearch(this.value)">
@@ -396,19 +397,19 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
           <label class="tag-section-label">질환 태그 <span style="color:#9ca3af;font-weight:400">(# 또는 질환명 입력)</span></label>
           <div class="tag-dropdown">
             <div class="tag-input-wrap" id="tagWrap" onclick="document.getElementById('tagBareInput').focus()">
-              <input class="tag-bare-input" id="tagBareInput" placeholder="#여드름 #습진 ...">
+              <input class="tag-bare-input" id="tagBareInput" placeholder="#여드름 #건선 ...">
             </div>
             <div class="tag-suggestions" id="tagSuggestions"></div>
           </div>
           <div class="preset-tags" id="presetTags">
             <span class="preset-tag" onclick="addPresetTag('여드름')"># 여드름</span>
-            <span class="preset-tag" onclick="addPresetTag('습진')"># 습진</span>
             <span class="preset-tag" onclick="addPresetTag('건선')"># 건선</span>
-            <span class="preset-tag" onclick="addPresetTag('주사')"># 주사</span>
-            <span class="preset-tag" onclick="addPresetTag('지루성 피부염')"># 지루성 피부염</span>
-            <span class="preset-tag" onclick="addPresetTag('색소 질환')"># 색소 질환</span>
-            <span class="preset-tag" onclick="addPresetTag('두드러기')"># 두드러기</span>
-            <span class="preset-tag" onclick="addPresetTag('멜라스마')"># 멜라스마</span>
+            <span class="preset-tag" onclick="addPresetTag('아토피피부염')"># 아토피피부염</span>
+            <span class="preset-tag" onclick="addPresetTag('광선각화증')"># 광선각화증</span>
+            <span class="preset-tag" onclick="addPresetTag('기저세포암')"># 기저세포암</span>
+            <span class="preset-tag" onclick="addPresetTag('멜라닌세포모반')"># 멜라닌세포모반</span>
+            <span class="preset-tag" onclick="addPresetTag('악성흑색종')"># 악성흑색종</span>
+            <span class="preset-tag" onclick="addPresetTag('편평세포암')"># 편평세포암</span>
           </div>
         </div>
         <div class="form-group">
@@ -420,7 +421,7 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
           <div class="media-upload-zone" id="mediaZone">
             <input type="file" accept="image/*,video/*" multiple id="mediaInput" onchange="handleMedia(this)">
             <div class="media-upload-icon">📎</div>
-            <div class="media-upload-text"><strong>파일 선택</strong> 또는 드래그해서 업로드<br><span style="font-size:11px;color:#c4cad4;margin-top:4px;display:block">JPG, PNG, MP4 지원 · 최대 50MB</span></div>
+            <div class="media-upload-text"><strong>파일 선택</strong> 또는 드래그해서 업로드<br><span style="font-size:11px;color:#c4cad4;margin-top:4px;display:block">JPG, PNG, MP4 지원 · 최대 10MB</span></div>
           </div>
           <div class="media-preview-list" id="mediaPreviewList"></div>
         </div>
@@ -467,20 +468,20 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
       <div class="side-title">인기 질환 태그</div>
       <div class="hot-tags">
         <div class="hot-tag" onclick="filterByTag('여드름')"># 여드름</div>
-        <div class="hot-tag" onclick="filterByTag('습진')"># 습진</div>
+        <div class="hot-tag" onclick="filterByTag('아토피피부염')"># 아토피피부염</div>
         <div class="hot-tag" onclick="filterByTag('건선')"># 건선</div>
-        <div class="hot-tag" onclick="filterByTag('주사')"># 주사</div>
-        <div class="hot-tag" onclick="filterByTag('지루성 피부염')"># 지루성</div>
-        <div class="hot-tag" onclick="filterByTag('멜라스마')"># 멜라스마</div>
-        <div class="hot-tag" onclick="filterByTag('두드러기')"># 두드러기</div>
-        <div class="hot-tag" onclick="filterByTag('색소 질환')"># 색소질환</div>
+        <div class="hot-tag" onclick="filterByTag('멜라닌세포모반')"># 멜라닌세포모반</div>
+        <div class="hot-tag" onclick="filterByTag('기저세포암')"># 기저세포암</div>
+        <div class="hot-tag" onclick="filterByTag('악성흑색종')"># 악성흑색종</div>
+        <div class="hot-tag" onclick="filterByTag('광선각화증')"># 광선각화증</div>
+        <div class="hot-tag" onclick="filterByTag('편평세포암')"># 편평세포암</div>
       </div>
     </div>
     <div class="side-card">
       <div class="side-title">공지사항</div>
-      <div class="notice-item"><div class="notice-dot"></div><div class="notice-text">AI 모델 v1.2 업데이트 — 색소 질환 정확도 개선</div></div>
+      <div class="notice-item"><div class="notice-dot"></div><div class="notice-text">AI 모델 v0.1 업데이트 — 11종 질환 분류 지원</div></div>
       <div class="notice-item"><div class="notice-dot"></div><div class="notice-text">케이스 업로드 시 환자 개인정보 비식별화 필수</div></div>
-      <div class="notice-item"><div class="notice-dot"></div><div class="notice-text">3월 케이스 스터디 모임 — 3/29(토) 오후 2시</div></div>
+      <div class="notice-item"><div class="notice-dot"></div><div class="notice-text">5월 케이스 스터디 모임 — 5/31(일) 오후 2시</div></div>
     </div>
   </div>
 </div>
