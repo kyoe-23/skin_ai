@@ -245,7 +245,7 @@
     <button class="nav-link" onclick="navigateTo('my_analyze.html')">나의 분석</button>
     <button class="nav-link" onclick="navigateTo('community.html')">커뮤니티</button>
   </div>
-  <div class="avatar" id="navAvatar" onclick="navigateTo('profile.html')" title="프로필">?</div>
+  <div class="avatar" id="navAvatar" onclick="navigateTo('profile.html')" title="프로필"></div>
 </nav>
 
 <!-- BOTTOM NAV (모바일) -->
@@ -483,13 +483,7 @@
 <script src="../src/auth_fetch.js"></script>
 <script src="../src/disease_map.js"></script>
 <script src="../src/ai_analyze.js"></script>
+<script src="../src/nav_avatar.js"></script>
 <script src="../src/transition.js"></script>
-<script>
-(function(){
-  const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-  const el = document.getElementById('navAvatar');
-  if (el && u.name) el.textContent = u.name.charAt(0);
-})();
-</script>
 </body>
 </html>

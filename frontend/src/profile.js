@@ -41,7 +41,8 @@ const markDirty = () => { _dirty = true; };
 function _renderUser(u) {
   const initial = (u.name || '?').charAt(0);
 
-  document.getElementById('navAvatar').textContent = initial;
+  // nav 아바타는 공용 헬퍼로 처리 — 텍스트 대신 사진/기본 이미지
+  if (typeof renderNavAvatar === 'function') renderNavAvatar(u);
 
   const setAvatarInitial = (id) => {
     const el = document.getElementById(id);
@@ -92,6 +93,9 @@ function _setAvatarImage(url) {
   const side = document.getElementById('sidebarAvatarImg');
   if (main) { main.src = url; main.style.display = 'block'; }
   if (side) { side.src = url; side.style.display = 'block'; }
+
+  // nav 아바타는 공용 헬퍼로 표시 (background-image + 기본 이미지 fallback)
+  if (typeof renderNavAvatar === 'function') renderNavAvatar({ avatar_url: url });
 }
 
 function _hideAvatarImage() {
@@ -99,6 +103,9 @@ function _hideAvatarImage() {
   const side = document.getElementById('sidebarAvatarImg');
   if (main) main.style.display = 'none';
   if (side) side.style.display = 'none';
+
+  // nav 아바타 — 기본 이미지로 원복
+  if (typeof renderNavAvatar === 'function') renderNavAvatar({ avatar_url: null });
 }
 
 // ─────────────────────────────────────────────────────
