@@ -33,7 +33,7 @@
   .nav-link { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6b7280; cursor: pointer; border: none; background: none; font-family: inherit; transition: all 0.15s; }
   .nav-link:hover { background: #f3f4f6; color: #1a1a2e; }
   .nav-link.active { background: #eff6ff; color: #2563eb; font-weight: 600; }
-  .avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; cursor: pointer; flex-shrink: 0; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; background: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; cursor: pointer; flex-shrink: 0; }
 
   /* ── BOTTOM NAV (모바일 전용) ── */
   .bottom-nav {
@@ -278,7 +278,7 @@
     <button class="nav-link active">나의 분석</button>
     <button class="nav-link" onclick="navigateTo('community.html')">커뮤니티</button>
   </div>
-  <div class="avatar" id="navAvatar" onclick="navigateTo('profile.html')" title="프로필">?</div>
+  <div class="avatar" id="navAvatar" onclick="navigateTo('profile.html')" title="프로필"></div>
 </nav>
 
 <!-- BOTTOM NAV (모바일) -->
@@ -455,13 +455,7 @@
 <script src="../src/auth_fetch.js"></script>
 <script src="../src/disease_map.js"></script>
 <script src="../src/my_analyze.js"></script>
+<script src="../src/nav_avatar.js"></script>
 <script src="../src/transition.js"></script>
-<script>
-(function(){
-  const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-  const el = document.getElementById('navAvatar');
-  if (el && u.name) el.textContent = u.name.charAt(0);
-})();
-</script>
 </body>
 </html>

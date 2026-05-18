@@ -39,16 +39,10 @@ const markDirty = () => { _dirty = true; };
 })();
 
 function _renderUser(u) {
-  const initial = (u.name || '?').charAt(0);
-
-  document.getElementById('navAvatar').textContent = initial;
-
-  const setAvatarInitial = (id) => {
-    const el = document.getElementById(id);
-    if (el && el.childNodes[0]) el.childNodes[0].textContent = initial;
-  };
-  setAvatarInitial('profileAvatarPreview');
-  setAvatarInitial('sidebarAvatar');
+  // 모든 아바타(nav · profileAvatarPreview · sidebarAvatar)는 공용 헬퍼로 일관 처리.
+  // 사진 있으면 사진, 없으면 기본 인물 SVG.
+  if (typeof renderNavAvatar === 'function') renderNavAvatar(u);
+  _renderProfileAndSidebarAvatars(u);
 
   document.getElementById('previewName').textContent = u.name || '';
   document.getElementById('sidebarName').textContent = u.name || '';
@@ -80,25 +74,40 @@ function _renderUser(u) {
 
   const accountTypeEl = document.getElementById('fieldAccountType');
   if (accountTypeEl) accountTypeEl.value = roleLabel(u.role) + ' 회원';
+}
 
-  // 아바타 이미지
-  if (u.avatar_url) {
-    _setAvatarImage(u.avatar_url);
+// profileAvatarPreview · sidebarAvatar 양쪽에 사진 또는 기본 SVG 적용
+function _renderProfileAndSidebarAvatars(u) {
+  const targets = [
+    { wrapId: 'profileAvatarPreview', imgId: 'avatarImg' },
+    { wrapId: 'sidebarAvatar',        imgId: 'sidebarAvatarImg' },
+  ];
+  for (const { wrapId, imgId } of targets) {
+    const wrap = document.getElementById(wrapId);
+    const img  = document.getElementById(imgId);
+    if (!wrap) continue;
+
+    // 잔재 텍스트 노드 모두 제거
+    wrap.childNodes.forEach(n => { if (n.nodeType === Node.TEXT_NODE) n.textContent = ''; });
+
+    if (u && u.avatar_url) {
+      if (img) { img.src = u.avatar_url; img.style.display = 'block'; }
+      wrap.style.backgroundImage = '';
+    } else {
+      if (img) { img.style.display = 'none'; img.src = ''; }
+      if (typeof applyDefaultAvatar === 'function') applyDefaultAvatar(wrap);
+    }
   }
 }
 
 function _setAvatarImage(url) {
-  const main = document.getElementById('avatarImg');
-  const side = document.getElementById('sidebarAvatarImg');
-  if (main) { main.src = url; main.style.display = 'block'; }
-  if (side) { side.src = url; side.style.display = 'block'; }
+  _renderProfileAndSidebarAvatars({ avatar_url: url });
+  if (typeof renderNavAvatar === 'function') renderNavAvatar({ avatar_url: url });
 }
 
 function _hideAvatarImage() {
-  const main = document.getElementById('avatarImg');
-  const side = document.getElementById('sidebarAvatarImg');
-  if (main) main.style.display = 'none';
-  if (side) side.style.display = 'none';
+  _renderProfileAndSidebarAvatars({ avatar_url: null });
+  if (typeof renderNavAvatar === 'function') renderNavAvatar({ avatar_url: null });
 }
 
 // ─────────────────────────────────────────────────────

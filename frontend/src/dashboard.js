@@ -14,18 +14,14 @@ function _renderGreeting(user) {
   const name = user?.name || '사용자';
   const role = user?.role || 'resident';
 
-  const titleEl  = document.getElementById('greetTitle');
-  const roleEl   = document.getElementById('greetRole');
-  const avatarEl = document.getElementById('navAvatar');
-  const avatarImgEl = document.getElementById('navAvatarImg');
+  const titleEl = document.getElementById('greetTitle');
+  const roleEl  = document.getElementById('greetRole');
 
-  if (titleEl)  titleEl.textContent  = `${greet}, ${name}님`;
-  if (roleEl)   roleEl.textContent   = roleLabel(role);
-  if (avatarEl) avatarEl.textContent = name.charAt(0);
-  if (avatarImgEl && user?.avatar_url) {
-    avatarImgEl.src = user.avatar_url;
-    avatarImgEl.style.display = 'block';
-  }
+  if (titleEl) titleEl.textContent = `${greet}, ${name}님`;
+  if (roleEl)  roleEl.textContent  = roleLabel(role);
+
+  // nav 아바타는 nav_avatar.js 공용 헬퍼로 일관 처리
+  if (typeof renderNavAvatar === 'function') renderNavAvatar(user);
 }
 
 // ── 최신 사용자 정보로 인사·아바타 갱신 ─────────────
