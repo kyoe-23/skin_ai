@@ -130,13 +130,14 @@ router.post('/report', authenticateToken, async (req, res) => {
 
 // POST /api/analyze/chat — LLM 채팅 프록시
 router.post('/chat', authenticateToken, async (req, res) => {
-  const { question, context, history } = req.body;
+  const { question, context, history, imageUrl } = req.body;
   if (!question) return res.status(400).json({ success: false, error: 'question이 필요합니다.' });
   try {
     const flaskRes = await axios.post(`${FLASK_URL}/chat`, {
       question,
       context: context || {},
       history: history || [],
+      ...(imageUrl && { image_url: imageUrl }),
     }, { timeout: 60000 });
     res.json(flaskRes.data);
   } catch (err) {

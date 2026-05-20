@@ -242,13 +242,21 @@ def check_is_skin_image(image: "Image") -> Optional[bool]:
 CHAT_HISTORY_MAX = 20   # 최대 전달 턴 수 (초과분은 오래된 것부터 제거)
 
 
-def chat_response(question: str, context: dict, history: Optional[list] = None) -> Optional[str]:
+def chat_response(
+    question: str,
+    context: dict,
+    history: Optional[list] = None,
+    image_b64: Optional[str] = None,
+    image_media_type: str = "image/jpeg",
+) -> Optional[str]:
     """진단 컨텍스트 기반 멀티턴 후속 질문 응답.
 
     Args:
         question: 현재 사용자 질문
         context: {class_name, confidence, report} 딕셔너리
         history: 이전 대화 목록 [{role: "user"|"ai", content: str}, ...]
+        image_b64: 첨부 이미지 base64 문자열 (None이면 텍스트만)
+        image_media_type: 이미지 MIME 타입
 
     Returns:
         str 응답 또는 None (LLM 비활성·실패 시).
@@ -293,11 +301,16 @@ def chat_response(question: str, context: dict, history: Optional[list] = None) 
         # 첫 번째 user 메시지에만 분석 컨텍스트가 들어있으므로 그대로 유지
         messages.append({"role": role, "content": content})
 
-    # 현재 질문 추가 — 이력이 있으면 질문만, 없으면 컨텍스트 포함
-    if messages:
-        messages.append({"role": "user", "content": question})
+    # 현재 질문 추가 — 이미지가 있으면 vision content block, 없으면 text만
+    base_text = question if messages else first_user_msg
+    if image_b64:
+        current_content = [
+            {"type": "image", "source": {"type": "base64", "media_type": image_media_type, "data": image_b64}},
+            {"type": "text", "text": base_text},
+        ]
     else:
-        messages.append({"role": "user", "content": first_user_msg})
+        current_content = base_text
+    messages.append({"role": "user", "content": current_content})
 
     try:
         response = client.messages.create(

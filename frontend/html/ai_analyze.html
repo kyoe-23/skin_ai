@@ -436,7 +436,19 @@
       <div id="chatMessages" style="display:flex;flex-direction:column;gap:14px;padding:16px 20px;min-height:60px;max-height:340px;overflow-y:auto;"></div>
       <!-- 입력창 -->
       <div style="padding:14px 20px 18px;border-top:1px solid #f0f2f5;background:#fafcff;">
+        <!-- 이미지 첨부 미리보기 -->
+        <div id="chatImagePreview" style="display:none;margin-bottom:8px;"></div>
         <div class="chat-input-outer">
+          <!-- 이미지 첨부 버튼 -->
+          <label for="chatFileInput"
+            style="width:32px;height:32px;border-radius:8px;background:#f3f4f6;border:1px solid #e8eaed;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s;"
+            onmouseover="this.style.background='#e8eaed'"
+            onmouseout="this.style.background='#f3f4f6'"
+            title="이미지 첨부">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+          </label>
+          <input id="chatFileInput" type="file" accept="image/*" style="display:none;"
+            onchange="if(this.files[0]) setChatImage(this.files[0]);">
           <textarea id="chatInput" rows="1"
             placeholder="진단 결과에 대해 질문해보세요..."
             style="flex:1;border:none;outline:none;font-size:13px;font-family:inherit;resize:none;line-height:1.5;max-height:100px;overflow-y:auto;background:transparent;color:#1a1a2e;padding:0;margin:0;vertical-align:middle;"

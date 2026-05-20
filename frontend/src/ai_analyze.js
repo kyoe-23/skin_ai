@@ -17,6 +17,7 @@ const errorCard         = document.getElementById('errorCard');
 let currentFile   = null;
 let lastApiResult = null;
 let chatHistory   = [];   // 이번 세션 채팅 기록 (기록 저장 시 함께 저장)
+let chatImageFile = null; // 채팅 첨부 이미지
 
 // ──────────────────────────────────────────
 //  사이드바 / 에러 카드 질환 목록 렌더링
@@ -369,10 +370,33 @@ function setQuestion(el) {
 
 const _AI_AVATAR = `<div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>`;
 
+function setChatImage(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  chatImageFile = file;
+  const preview = document.getElementById('chatImagePreview');
+  if (!preview) return;
+  const url = URL.createObjectURL(file);
+  preview.innerHTML = `
+    <div style="position:relative;display:inline-block;">
+      <img src="${url}" onload="URL.revokeObjectURL(this.src)"
+           style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #e8eaed;">
+      <button onclick="clearChatImage()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#6b7280;border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>
+    </div>`;
+  preview.style.display = 'block';
+}
+
+function clearChatImage() {
+  chatImageFile = null;
+  const preview = document.getElementById('chatImagePreview');
+  if (preview) { preview.innerHTML = ''; preview.style.display = 'none'; }
+  const fi = document.getElementById('chatFileInput');
+  if (fi) fi.value = '';
+}
+
 async function sendChat() {
   const input = document.getElementById('chatInput');
   const question = input.value.trim();
-  if (!question || !lastApiResult) return;
+  if ((!question && !chatImageFile) || !lastApiResult) return;
 
   const suggestions = document.getElementById('chatSuggestions');
   if (suggestions) suggestions.style.display = 'none';
@@ -380,13 +404,34 @@ async function sendChat() {
   const messagesEl = document.getElementById('chatMessages');
   const safeQ = question.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+  // 사용자 버블 — 이미지 미리보기 포함
+  const imgThumb = chatImageFile
+    ? `<img src="${URL.createObjectURL(chatImageFile)}" style="display:block;max-width:160px;max-height:120px;border-radius:8px;margin-bottom:${question ? '6px' : '0'};object-fit:cover;">`
+    : '';
   messagesEl.insertAdjacentHTML('beforeend', `
     <div style="align-self:flex-end;display:flex;align-items:flex-end;max-width:80%;">
-      <div style="background:#2563eb;color:#fff;padding:10px 14px;border-radius:16px 16px 4px 16px;font-size:13px;line-height:1.6;">${safeQ}</div>
+      <div style="background:#2563eb;color:#fff;padding:10px 14px;border-radius:16px 16px 4px 16px;font-size:13px;line-height:1.6;">${imgThumb}${safeQ}</div>
     </div>`);
 
   input.value = '';
   input.style.height = 'auto';
+
+  // 첨부 이미지 업로드 (있는 경우)
+  let imageUrl = null;
+  const fileToUpload = chatImageFile;
+  clearChatImage();
+
+  if (fileToUpload) {
+    const fd = new FormData();
+    fd.append('image', fileToUpload);
+    try {
+      const upRes = await apiFetch('/api/analyze/upload', { method: 'POST', body: fd });
+      const upData = await upRes.json();
+      imageUrl = upData.imageUrl || null;
+    } catch {
+      // 업로드 실패해도 텍스트만으로 진행
+    }
+  }
 
   const loadingId = 'chat-loading-' + Date.now();
   messagesEl.insertAdjacentHTML('beforeend', `
@@ -396,6 +441,7 @@ async function sendChat() {
         <div class="chat-dot"></div><div class="chat-dot"></div><div class="chat-dot"></div>
       </div>
     </div>`);
+  messagesEl.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   try {
     const res = await apiFetch('/api/analyze/chat', {
@@ -408,6 +454,7 @@ async function sendChat() {
           confidence: lastApiResult.primary.confidence,
           report:     lastApiResult.report,
         },
+        ...(imageUrl && { imageUrl }),
       }),
     });
     const data = await res.json();

@@ -514,12 +514,34 @@ def predict():
 @app.route("/chat", methods=["POST"])
 def chat():
     """LLM 채팅 — 진단 컨텍스트 기반 멀티턴 후속 질문 처리."""
+    import urllib.request
     from llm_service import chat_response
     data = request.get_json(silent=True) or {}
     question = data.get("question", "").strip()
     if not question:
         return jsonify({"success": False, "error": "question이 필요합니다."}), 400
-    answer = chat_response(question, data.get("context", {}), data.get("history", []))
+
+    image_b64, image_media_type = None, "image/jpeg"
+    image_url = data.get("image_url", "").strip()
+    if image_url:
+        try:
+            req = urllib.request.Request(image_url, headers={"User-Agent": "SkinAI/1.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                img_bytes = resp.read()
+            image_b64 = base64.b64encode(img_bytes).decode("utf-8")
+            ct = resp.headers.get_content_type() or "image/jpeg"
+            if ct in ("image/png", "image/webp", "image/gif"):
+                image_media_type = ct
+        except Exception as e:
+            logger.warning(f"[chat] 첨부 이미지 다운로드 실패 — 텍스트만 진행: error={e}")
+
+    answer = chat_response(
+        question,
+        data.get("context", {}),
+        data.get("history", []),
+        image_b64=image_b64,
+        image_media_type=image_media_type,
+    )
     if answer is None:
         return jsonify({"success": True, "answer": None, "enabled": False})
     return jsonify({"success": True, "answer": answer, "enabled": True})
