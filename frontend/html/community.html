@@ -4,14 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>SkinAI - 학습 커뮤니티</title>
+<link rel="icon" type="image/svg+xml" href="assets/skinai_icon.svg">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background:#f8fafc; color:#1a1a2e; min-height:100vh; animation:pageFadeIn 0.3s ease; }
 @keyframes pageFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
 nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; z-index:200; padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:56px; }
-.nav-logo { display:flex; align-items:center; gap:8px; font-size:17px; font-weight:800; color:#1a1a2e; letter-spacing:-0.4px; }
-.nav-logo-icon { width:30px; height:30px; background:linear-gradient(135deg,#2563eb,#4f46e5); border-radius:8px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(37,99,235,0.35); }
+.nav-logo { display:flex; align-items:center; gap:10px; font-size:20px; font-weight:800; color:#1a1a2e; letter-spacing:-0.4px; }
+.nav-logo-icon {
+    overflow:hidden; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(37,99,235,0.35); }
 .nav-logo-icon svg { width:16px; height:16px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .nav-logo span { color:#2563eb; }
 .nav-links { display:flex; align-items:center; gap:4px; }
@@ -291,7 +293,7 @@ nav { background:#fff; border-bottom:1px solid #e8eaed; position:sticky; top:0; 
 
 <nav>
   <div class="nav-logo" onclick="navigateTo('dashboard.html')" style="cursor:pointer">
-    <div class="nav-logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 7-7 9-4-2-7-5-7-9a7 7 0 0 1 7-7z"/><path d="M12 8v4M10 10h4"/></svg></div>
+    <div class="nav-logo-icon"><img src="assets/skinai_icon.svg" style="width:100%;height:100%;" alt="SkinAI"></div>
     Skin<span>AI</span>
   </div>
   <div class="nav-links">

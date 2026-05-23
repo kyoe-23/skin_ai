@@ -1,0 +1,46 @@
+<svg viewBox="140 40 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="lensGrad" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/>
+    </radialGradient>
+    <radialGradient id="crossGrad" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#dbeafe" stop-opacity="1"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect x="140" y="40" width="400" height="400" rx="90" fill="#2563eb"/>
+
+  <path d="M175 115 L175 90 L200 90" fill="none" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M505 115 L505 90 L480 90" fill="none" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M175 365 L175 390 L200 390" fill="none" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M505 365 L505 390 L480 390" fill="none" stroke="#60a5fa" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <line x1="165" y1="219" x2="515" y2="219" stroke="#60a5fa" stroke-width="2" stroke-dasharray="10,8" opacity="0.45"/>
+
+  <circle cx="340" cy="219" r="100" fill="url(#lensGrad)"/>
+  <circle cx="340" cy="219" r="100" fill="none" stroke="#ffffff" stroke-width="15"/>
+
+  <path d="
+    M330 168 L350 168 Q357 168 357 175
+    L357 202 L384 202 Q391 202 391 209
+    L391 229 Q391 236 384 236
+    L357 236 L357 263 Q357 270 350 270
+    L330 270 Q323 270 323 263
+    L323 236 L296 236 Q289 236 289 229
+    L289 209 Q289 202 296 202
+    L323 202 L323 175 Q323 168 330 168 Z
+  " fill="url(#crossGrad)" filter="url(#glow)"/>
+
+  <path d="M332 172 L348 172 Q353 172 353 177 L353 204 L355 204 L355 177 Q355 170 348 170 L332 170 Q325 170 325 177 L325 204 L327 204 L327 177 Q327 172 332 172 Z" fill="#ffffff" opacity="0.22"/>
+
+  <ellipse cx="302" cy="182" rx="16" ry="9" fill="#ffffff" opacity="0.22" transform="rotate(-30 302 182)"/>
+
+  <line x1="412" y1="291" x2="462" y2="348" stroke="#ffffff" stroke-width="20" stroke-linecap="round"/>
+  <line x1="406" y1="287" x2="456" y2="342" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.25"/>
+</svg>

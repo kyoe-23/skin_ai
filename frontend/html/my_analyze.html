@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SkinAI - 학습 기록</title>
+<link rel="icon" type="image/svg+xml" href="assets/skinai_icon.svg">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -26,7 +27,8 @@
     padding: 0 20px; display: flex; align-items: center; justify-content: space-between; height: 54px;
   }
   .nav-logo { display: flex; align-items: center; gap: 7px; font-size: 17px; font-weight: 800; color: #1a1a2e; letter-spacing: -0.4px; }
-  .nav-logo-icon { width: 28px; height: 28px; background: linear-gradient(135deg,#2563eb,#4f46e5); border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow:0 2px 8px rgba(37,99,235,0.35); }
+  .nav-logo-icon {
+    overflow:hidden; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow:0 2px 8px rgba(37,99,235,0.35); }
   .nav-logo-icon svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .nav-logo span { color: #2563eb; }
   .nav-links { display: flex; align-items: center; gap: 2px; }
@@ -268,7 +270,7 @@
 <nav>
   <div class="nav-logo" onclick="navigateTo('dashboard.html')" style="cursor:pointer">
     <div class="nav-logo-icon">
-      <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 7-7 9-4-2-7-5-7-9a7 7 0 0 1 7-7z"/><path d="M12 8v4M10 10h4"/></svg>
+      <img src="assets/skinai_icon.svg" style="width:100%;height:100%;" alt="SkinAI">
     </div>
     Skin<span>AI</span>
   </div>

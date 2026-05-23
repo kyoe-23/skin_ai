@@ -1,6 +1,6 @@
 {
   "name": "auth-board-backend",
-  "version": "0.0.37",
+  "version": "0.1.28",
   "description": "JWT 기반 사용자 인증 및 게시판 시스템 백엔드 서버",
   "main": "src/server.js",
   "scripts": {

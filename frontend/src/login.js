@@ -32,6 +32,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('errorMsg').classList.remove('show');
   }
 
+  // ── 상단 토스트 알림 ──
+  let toastTimer = null;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
+  }
+
   // ── 로그인 처리 ──
   async function handleLogin() {
     const email    = document.getElementById('emailInput').value.trim();
@@ -58,7 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       if (!res.ok) {
-        showError(data.message || '이메일 또는 비밀번호가 올바르지 않습니다.');
+        const msg = data.message || '아이디나 패스워드가 일치하지 않습니다.';
+        showError(msg);
+        showToast(msg);
         return;
       }
 

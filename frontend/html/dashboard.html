@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>SkinAI - 홈</title>
+<link rel="icon" type="image/svg+xml" href="assets/skinai_icon.svg">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
 
@@ -23,8 +24,9 @@
     position:sticky; top:0; z-index:100;
     padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:56px;
   }
-  .nav-logo { display:flex; align-items:center; gap:8px; font-size:17px; font-weight:800; color:#1a1a2e; letter-spacing:-0.4px; cursor:pointer; }
-  .nav-logo-icon { width:30px; height:30px; background:linear-gradient(135deg,#2563eb,#4f46e5); border-radius:8px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(37,99,235,0.35); }
+  .nav-logo { display:flex; align-items:center; gap:10px; font-size:20px; font-weight:800; color:#1a1a2e; letter-spacing:-0.4px; cursor:pointer; }
+  .nav-logo-icon {
+    overflow:hidden; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(37,99,235,0.35); }
   .nav-logo-icon svg { width:16px; height:16px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   .nav-logo span { color:#2563eb; }
   .nav-links { display:flex; align-items:center; gap:4px; }
@@ -314,8 +316,9 @@
   .faq-answer p { font-size: 13px; color: var(--text-sub); line-height: 1.8; }
 
   .index-footer { padding: 48px 60px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; background: var(--white); }
-  .footer-logo { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: var(--text); }
-  .footer-logo-icon { width: 26px; height: 26px; background: var(--blue); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .footer-logo { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; color: var(--text); }
+  .footer-logo-icon {
+    overflow:hidden; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
   .footer-logo-icon svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .footer-logo span { color: var(--blue); }
   .footer-copy { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
@@ -378,7 +381,7 @@
 <nav>
   <div class="nav-logo" onclick="navigateTo('dashboard.html')">
     <div class="nav-logo-icon">
-      <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 7-7 9-4-2-7-5-7-9a7 7 0 0 1 7-7z"/><path d="M12 8v4M10 10h4"/></svg>
+      <img src="assets/skinai_icon.svg" style="width:100%;height:100%;" alt="SkinAI">
     </div>
     Skin<span>AI</span>
   </div>
@@ -627,7 +630,7 @@
   <div>
     <div class="footer-logo">
       <div class="footer-logo-icon">
-        <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4-3 7-7 9-4-2-7-5-7-9a7 7 0 0 1 7-7z"/><path d="M12 8v4M10 10h4"/></svg>
+        <img src="assets/skinai_icon.svg" style="width:100%;height:100%;" alt="SkinAI">
       </div>
       Skin<span>AI</span>
     </div>
