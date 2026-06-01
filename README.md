@@ -1,8 +1,10 @@
 # SkinAI
 
-AI 기반 안면 피부 질환 분류 의료 보조 서비스.
+안면부 피부질환 AI 분류 의료 보조 서비스.
 
-6개 클래스(건선, 아토피피부염, 여드름, 주사, 지루피부염, 정상)를 AI Hub 08-14 합성 데이터셋으로 학습한 DenseNet121 모델 기반.
+DenseNet121 / EfficientNet-B3 기반으로 11종 피부질환을 분류하고, Grad-CAM 히트맵과 Claude LMM 기반 자연어 리포트를 함께 제공합니다.
+
+> **의료 면책**: 본 서비스는 교육·연구 목적의 보조 도구이며, 확정 진단은 피부과 전문의 대면 진료로만 가능합니다.
 
 ---
 
@@ -10,230 +12,134 @@ AI 기반 안면 피부 질환 분류 의료 보조 서비스.
 
 ```
 skin_ai/
-├── ai/                       # AI 핵심 모듈
-│   ├── dataset/              #   데이터셋 클래스 (PyTorch Dataset)
-│   │   └── dataset.py        #     AihubFacialDataset, AihubSegDataset, CLASS_MAP, get_transforms
-│   ├── preprocessing/        #   전처리 파이프라인
-│   │   ├── aihub_preprocessor.py #   전처리 메인 (AIHubPreprocessor)
-│   │   ├── resize_zips.py    #     1,024px ZIP → 지정 크기 JPEG ZIP 변환
-│   │   ├── aihub_validate.py #     데이터 검증
-│   │   └── aihub_eda.py      #     EDA 시각화
-│   ├── training/             #   모델 학습
-│   │   ├── classifier/       #     분류 + 세그멘테이션 학습
-│   │   │   ├── config.py     #       ClassifyConfig, SegmentConfig (환경변수 지원)
-│   │   │   ├── model.py      #       build_classifier(), build_segmentor()
-│   │   │   ├── train.py      #       DenseNet121/EfficientNet-B3 분류 학습
-│   │   │   └── train_seg.py  #       DeeplabV3+ 세그멘테이션 학습 (아토피 전용)
-│   │   └── utils.py          #     공유 유틸리티 (get_device, topk_accuracy)
-│   ├── testing/              #   평가 + 임계값 최적화
-│   │   ├── evaluate.py       #     Top-1/3, F1, AUC, Confusion Matrix, ROC
-│   │   └── threshold_opt.py  #     클래스별 confidence threshold 최적화
-│   ├── inference/            #   Flask 추론 API (port 5001)
-│   │   └── app.py            #     /predict (Grad-CAM), /health, /classes
-│   └── results/              #   모델 체크포인트 + 학습 로그 (gitignored)
-│                             #     best.pth, epoch_N.pth, training_log.json, loss_curve.png
+├── backend/                  # Node.js / Express API (port 3000)
+│   ├── src/
+│   │   ├── routes/           #   auth / analyze / records / users
+│   │   ├── middleware/       #   JWT 인증 / rate limiting
+│   │   ├── utils/masking.js  #   EXIF 제거 + 개인정보 마스킹
+│   │   └── config/supabase.js
+│   └── sql_schema/           #   Supabase 마이그레이션 SQL
+│
+├── frontend/                 # Vanilla JS / HTML / CSS
+│   ├── html/                 #   페이지 HTML
+│   └── src/                  #   JS 모듈
+│
+├── ai/
+│   ├── inference/            # Flask 추론 서버 (port 5001)
+│   │   ├── app.py            #   /predict / /report / /chat / /health
+│   │   └── llm_service.py    #   Claude LMM 연동 (리포트·OOD·채팅)
+│   ├── training/classifier/  # 학습 파이프라인
+│   ├── dataset/              # PyTorch Dataset 클래스
+│   ├── preprocessing/        # 전처리 파이프라인
+│   │   └── class_maps/       #   클래스 매핑 JSON
+│   ├── testing/              # 평가 + 임계값 최적화
+│   └── results/              # 학습 결과 (*.pth gitignored)
+│
+├── data/processed/           # 전처리 CSV (git 추적)
+│   ├── DS14/ DS15/           #   AI Hub 전처리 결과
+│   ├── dermnet/ isic2019/ ham10000/
+│   └── unified/              #   통합 11종 데이터셋
 │
 ├── skinai_data/              # Google Drive DataLoader 패키지
-│   ├── scripts/              #   Drive 관리 스크립트
-│   │   ├── build_manifest.py #     Drive 탐색 → manifest_zips.csv 생성
-│   │   ├── download_dataset.py #   ZIP 다운로드 (--save-zip / 압축 해제)
-│   │   ├── upload_to_drive.py  #   [PM 전용] 로컬 데이터 → Drive 업로드
-│   │   └── manifest_zips.csv #     Drive ZIP 파일 목록 (git 추적)
-│   ├── auth.py               #   Drive API 인증
-│   ├── manifest.py           #   manifest CSV 로드
-│   ├── dataset.py            #   Drive 스트리밍 Dataset
-│   └── loader.py             #   DataLoader 래퍼
-│
-├── skinai_docs/              # 기획 문서
-│
-├── backend/                  # Node.js / Express (port 3000)
-├── frontend/                 # Vanilla JS / HTML / CSS
-├── scin_legacy/              # 레거시 SCIN ResNet50 (유지만)
-│
-├── data/                     # 데이터 (대부분 gitignored)
-│   ├── dataset_14/           #   AI Hub 08-14 ZIP 원본 (gitignored)
-│   │   ├── Training/
-│   │   │   ├── 01_raw/       #     TS_{클래스}_{방향}.zip × 12
-│   │   │   └── 02_label/     #     TL_{클래스}_{방향}.zip × 12
-│   │   └── Validation/
-│   │       ├── 01_raw/       #     VS_{클래스}_{방향}.zip × 12
-│   │       └── 02_label/     #     VL_{클래스}_{방향}.zip × 12
-│   ├── dataset_15/           #   AI Hub 08-15 ZIP 원본 (gitignored)
-│   │   ├── Training/
-│   │   │   ├── 01_raw/       #     TS_{클래스}.zip × 15 (광선각화증 등)
-│   │   │   └── 02_label/     #     TL_{클래스}.zip × 15
-│   │   └── Validation/
-│   │       ├── 01_raw/       #     VS_{클래스}.zip × 15
-│   │       └── 02_label/     #     VL_{클래스}.zip × 15
-│   ├── raw/                  #   ZIP 압축 해제 원본 (gitignored, Drive 경유)
-│   └── processed/            #   전처리 결과 (git 추적)
-│       ├── DS14/             #     dataset_14 전처리 결과
-│       │   ├── train.csv     #       학습 CSV
-│       │   ├── val.csv       #       검증 CSV
-│       │   ├── metadata.json #       클래스·통계 메타데이터
-│       │   ├── validation_report.json
-│       │   └── eda/          #       EDA 시각화 결과
-│       └── DS15/             #     dataset_15 전처리 결과
-│           ├── train.csv
-│           ├── val.csv
-│           ├── metadata.json
-│           └── validation_report.json
-│
-├── train.ipynb               # Colab / 로컬 학습 노트북
-└── setup.py                  # skinai-data pip 패키지 정의
+└── skinai_docs/              # 개발 기획 문서
 ```
 
 ---
 
 ## 서비스 구성
 
-| 서비스 | 기술 스택 | 포트 |
-|--------|-----------|------|
+```
+Browser → Express Backend (:3000) → Flask AI Service (:5001)
+                  ↓                         ↓
+           Supabase DB/Storage        Claude API (LMM)
+```
+
+| 서비스 | 스택 | 포트 |
+|--------|------|------|
 | Backend | Node.js / Express | 3000 |
 | AI Service | Python / Flask + PyTorch | 5001 |
 | Frontend | Vanilla JS / HTML / CSS | (백엔드 서빙) |
+| DB / Storage | Supabase (PostgreSQL + S3) | — |
 
-```
-Browser → Frontend → Express (:3000) → Flask AI (:5001)
-```
+### AI Service 주요 기능
+
+- **분류**: DenseNet121 / EfficientNet-B3 Top-1/Top-3 예측
+- **Grad-CAM**: 예측 근거 히트맵 시각화
+- **OOD 필터**: Claude Haiku vision으로 비-피부 이미지 사전 거절
+- **리포트**: Claude Sonnet으로 자연어 임상 리포트 생성
+- **멀티턴 채팅**: 분석 결과 기반 후속 질문 응답
+
+---
+
+## 클래스 정의 (DS_unified 11종)
+
+| idx | 클래스 | 영문 |
+|-----|--------|------|
+| 0 | 건선 | Psoriasis |
+| 1 | 아토피피부염 | Atopic Dermatitis |
+| 2 | 여드름 | Acne |
+| 3 | 광선각화증 | Actinic Keratosis |
+| 4 | 기저세포암 | Basal Cell Carcinoma |
+| 5 | 멜라닌세포모반 | Melanocytic Nevi |
+| 6 | 악성흑색종 | Melanoma |
+| 7 | 지루각화증 | Seborrheic Keratosis |
+| 8 | 편평세포암 | Squamous Cell Carcinoma |
+| 9 | 피부섬유종 | Dermatofibroma |
+| 10 | 혈관종 | Vascular Lesion |
+
+---
+
+## 학습 데이터
+
+| 데이터셋 | 클래스 | 비고 |
+|---------|--------|------|
+| AI Hub 08-14 (DS14) | 6종 | 합성 데이터 12,000장 |
+| AI Hub 08-15 (DS15) | 15종 | 합성 데이터 15,000장 |
+| DermNet NZ | 3종 | 공개 임상 데이터 |
+| ISIC 2019 | 8종 | 공개 임상 데이터 |
+| HAM10000 | 7종 | 공개 임상 데이터 |
+
+> 원본 데이터는 라이선스 제약으로 포함되지 않습니다. AI Hub 데이터는 별도 신청, 외부 데이터는 각 공식 배포처에서 수집하세요.
 
 ---
 
 ## 개발 환경 설정
 
+### 사전 요구사항
+
+- Node.js 18+
+- Python 3.10+
+- Supabase 프로젝트 (DB + Storage)
+- Anthropic API 키 (LMM 기능 사용 시)
+
 ### Backend
 
 ```bash
-cd backend && npm install && npm start   # port 3000
+cd backend
+cp .env.example .env   # 환경변수 설정
+npm install
+npm start              # http://localhost:3000
 ```
 
 ### Flask AI 서비스
 
 ```bash
-cd ai/inference
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-python app.py          # 개발 (port 5001)
+
+cd ai/inference
+cp .env.example .env   # 환경변수 설정
+python app.py          # http://localhost:5001
+
+# 가상환경 종료
+deactivate
 ```
-
-### skinai-data 패키지 설치
-
-```bash
-pip install -e .
-```
-
----
-
-## 데이터 파이프라인
-
-### 1. Drive 인증 (최초 1회)
-
-```bash
-python -m skinai_data.auth
-```
-
-### 2. ZIP 다운로드
-
-```bash
-# 방법 A — ZIP 그대로 저장 (전처리기 직접 호환, 권장)
-python skinai_data/scripts/download_dataset.py --save-zip --include-labels --resume
-
-# 방법 B — 압축 해제하여 PNG 저장
-python skinai_data/scripts/download_dataset.py --resume
-```
-
-자세한 설명: [skinai_data/scripts/README.md](skinai_data/scripts/README.md)
-
-### 3. 사전 리사이즈 (선택, I/O 최적화)
-
-원본 1,024px PNG → 256px JPEG 변환. 9.78GB → 약 2GB, 로딩 속도 3~5배 향상.
-
-```bash
-python -m ai.preprocessing.resize_zips --resume
-```
-
-건너뛰면 원본 ZIP으로 학습하며, 그 경우 아래 전처리 명령에서 `--data_root data/dataset_14` 사용.
-
-### 4. 전처리 (CSV 생성)
-
-```bash
-# dataset_14 원본 사용 시
-python -m ai.preprocessing.aihub_preprocessor --data_root data/dataset_14 --output_dir data/processed/DS14
-
-# dataset_15 원본 사용 시
-python -m ai.preprocessing.aihub_preprocessor --data_root data/dataset_15 --output_dir data/processed/DS15
-
-# 리사이즈 변환본 사용 시
-python -m ai.preprocessing.aihub_preprocessor --data_root data/dataset_256 --output_dir data/processed/DS14
-
-# 검증 및 EDA
-python -m ai.preprocessing.aihub_validate --processed_dir data/processed/DS14
-python -m ai.preprocessing.aihub_eda --processed_dir data/processed/DS14
-```
-
-### 5. 학습
-
-```bash
-# DenseNet121 분류 (기본)
-python -m ai.training.classifier.train
-
-# EfficientNet-B3 비교
-python -m ai.training.classifier.train --backbone efficientnet_b3
-
-# 체크포인트에서 이어서 학습 (Colab 세션 만료 후 재개)
-python -m ai.training.classifier.train --resume ai/results/epoch_N.pth
-
-# Colab 환경 (경로 재매핑)
-python -m ai.training.classifier.train --root_dir /content/skin_ai
-
-# 세그멘테이션 (아토피 전용, DeeplabV3+)
-python -m ai.training.classifier.train_seg
-```
-
-#### 학습 환경변수
-
-| 환경변수 | 기본값 | 설명 |
-|---------|--------|------|
-| `BACKBONE` | densenet121 | 모델 backbone |
-| `BATCH_SIZE` | 64 | 배치 크기 |
-| `LEARNING_RATE` | 0.0005 | 학습률 |
-| `NUM_EPOCHS` | 30 | 최대 에폭 |
-| `NUM_WORKERS` | 4 | DataLoader 워커 수 |
-| `WARMUP_EPOCHS` | 3 | LR warmup 에폭 |
-| `EARLY_STOPPING_PATIENCE` | 30 | 조기 종료 patience |
-| `DATA_DIR` | data/processed/DS14 | 전처리 CSV 디렉토리 |
-| `CHECKPOINT_DIR` | ai/results | 체크포인트 저장 경로 |
-| `IMAGE_SIZE` | 256 | 리사이즈 크기 |
-| `CROP_SIZE` | 224 | 크롭 크기 |
-| `DROPOUT_RATE` | 0.5 | Dropout 비율 |
-| `WEIGHT_DECAY` | 1e-3 | L2 정규화 |
-| `DEVICE` | auto | 디바이스 (auto/cuda/mps/cpu) |
-
-### 6. 평가
-
-```bash
-python -m ai.testing.evaluate \
-    --checkpoint ai/results/best.pth
-python -m ai.testing.threshold_opt \
-    --checkpoint ai/results/best.pth
-```
-
----
-
-## 클래스 정의
-
-| class_idx | 클래스 | 영문 |
-|-----------|--------|------|
-| 0 | 건선 | Psoriasis |
-| 1 | 아토피피부염 | Atopic Dermatitis |
-| 2 | 여드름 | Acne |
-| 3 | 주사 | Rosacea |
-| 4 | 지루피부염 | Seborrheic Dermatitis |
-| 5 | 정상 | Normal |
 
 ---
 
 ## 현재 제한사항
 
-- 인메모리 저장소: 게시판 데이터 재시작 시 초기화 (PostgreSQL 마이그레이션 예정)
-- 체크포인트 미포함: `.pth` 파일은 gitignore — 별도 학습 필요
-- 학습 데이터 미포함: AI Hub 라이선스로 인해 별도 신청 필요
+- 모델 체크포인트 미포함: `*.pth`는 gitignore — 별도 학습 또는 수령 필요
+- 학습 데이터 미포함: AI Hub 라이선스 제약으로 별도 신청 필요
+- LMM 기능: `LLM_ENABLED=true` 및 `ANTHROPIC_API_KEY` 설정 시에만 활성화

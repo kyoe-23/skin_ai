@@ -29,6 +29,10 @@ Thumbs.db
 dist/
 build/
 
+# Colab 학습 노트북 (train_unified.ipynb 제외하고 무시)
+colab_train/*.ipynb
+!colab_train/train_unified.ipynb
+
 #.md
 CLAUDE.md
 
@@ -83,6 +87,7 @@ __pycache__/
 *.so
 .Python
 venv/
+.venv/
 ENV/
 env/
 *.egg-info/
