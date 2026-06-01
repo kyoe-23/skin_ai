@@ -38,6 +38,8 @@ CLAUDE.md
 
 # Docs
 docs/
+skinai_docs/part11_server_deploy.md
+skinai_docs/part12_macbook_deploy.md
 
 # SCIN 레거시 프로젝트
 scin_legacy/data/scin_dataset/
