@@ -16,7 +16,8 @@ skin_ai/
 │   ├── src/
 │   │   ├── routes/           #   auth / analyze / records / users
 │   │   ├── middleware/       #   JWT 인증 / rate limiting
-│   │   ├── utils/masking.js  #   EXIF 제거 + 개인정보 마스킹
+│   │   ├── utils/            #   masking.js (EXIF 제거 + 개인정보 마스킹)
+│   │   │                     #   sessions.js
 │   │   └── config/supabase.js
 │   └── sql_schema/           #   Supabase 마이그레이션 SQL
 │
@@ -35,6 +36,8 @@ skin_ai/
 │   ├── testing/              # 평가 + 임계값 최적화
 │   └── results/              # 학습 결과 (*.pth gitignored)
 │
+├── colab_train/              # Google Colab 학습 노트북
+│
 ├── data/processed/           # 전처리 CSV (git 추적)
 │   ├── DS14/ DS15/           #   AI Hub 전처리 결과
 │   ├── dermnet/ isic2019/ ham10000/
@@ -46,12 +49,84 @@ skin_ai/
 
 ---
 
-## 서비스 구성
+## 시스템 아키텍처
 
+```mermaid
+flowchart TD
+    Client(["브라우저 · Client"])
+
+    subgraph Backend["Express Backend  :3000"]
+        direction LR
+        BAuth["auth.js\nJWT 인증 · 비밀번호 재설정"]
+        BAnalyze["analyze.js\nmulter → 매직바이트 검증 → EXIF masking"]
+        BRecords["records.js · users.js\n분석 이력 CRUD · 사용자 관리"]
+    end
+
+    subgraph Flask["Flask AI Service  :5001"]
+        direction LR
+        FOOD["① OOD Filter"]
+        FModel["② DenseNet121 / EfficientNet-B3\nTop-1 · Top-3 + 신뢰도"]
+        FGradCAM["③ Grad-CAM\n히트맵 시각화"]
+        FReport["④ LLM Report\n자연어 임상 소견"]
+        FOOD --> FModel --> FGradCAM --> FReport
+    end
+
+    subgraph Supabase["Supabase"]
+        direction LR
+        DB[("PostgreSQL\n사용자 · 분석 이력")]
+        S3[("S3 Storage\n이미지 · Grad-CAM")]
+    end
+
+    subgraph ClaudeAPI["Claude API  ─  Anthropic"]
+        direction LR
+        Haiku["claude-haiku\nOOD Vision 판별"]
+        Sonnet["claude-sonnet\n리포트 생성 · 멀티턴 채팅"]
+    end
+
+    Client -->|"이미지 업로드 / 이력 조회"| Backend
+    Backend -->|"POST /predict"| Flask
+    Backend <-->|"읽기 · 쓰기"| DB
+    Backend <-->|"저장 · 조회"| S3
+    FOOD <-.->|"Vision API"| Haiku
+    FReport <-.->|"Messages API"| Sonnet
 ```
-Browser → Express Backend (:3000) → Flask AI Service (:5001)
-                  ↓                         ↓
-           Supabase DB/Storage        Claude API (LMM)
+
+### AI 추론 파이프라인
+
+```mermaid
+flowchart LR
+    Input(["이미지 입력"])
+
+    subgraph OOD["OOD 필터"]
+        OOD_Call["Claude Haiku\nVision 호출"]
+        OOD_Check{"피부 이미지\n여부"}
+        OOD_Call --> OOD_Check
+    end
+
+    subgraph Inference["분류 추론"]
+        Preprocess["전처리\n256→224 크롭 · 정규화"]
+        Model["DenseNet121\n또는 EfficientNet-B3"]
+        Threshold["클래스별 임계값 적용\nthresholds.json"]
+        Preprocess --> Model --> Threshold
+    end
+
+    subgraph Explain["설명 생성"]
+        GradCAM["Grad-CAM\n활성화 히트맵"]
+        Report["Claude Sonnet\n임상 소견 리포트"]
+        Chat["멀티턴 채팅\n후속 질문 응답"]
+    end
+
+    Reject(["거절 응답\n비-피부 이미지"])
+    Result(["분석 결과 반환"])
+
+    Input --> OOD_Call
+    OOD_Check -->|"아님"| Reject
+    OOD_Check -->|"맞음"| Preprocess
+    Threshold --> GradCAM
+    Threshold --> Report
+    Report --> Chat
+    GradCAM --> Result
+    Chat --> Result
 ```
 
 | 서비스 | 스택 | 포트 |
@@ -60,14 +135,6 @@ Browser → Express Backend (:3000) → Flask AI Service (:5001)
 | AI Service | Python / Flask + PyTorch | 5001 |
 | Frontend | Vanilla JS / HTML / CSS | (백엔드 서빙) |
 | DB / Storage | Supabase (PostgreSQL + S3) | — |
-
-### AI Service 주요 기능
-
-- **분류**: DenseNet121 / EfficientNet-B3 Top-1/Top-3 예측
-- **Grad-CAM**: 예측 근거 히트맵 시각화
-- **OOD 필터**: Claude Haiku vision으로 비-피부 이미지 사전 거절
-- **리포트**: Claude Sonnet으로 자연어 임상 리포트 생성
-- **멀티턴 채팅**: 분석 결과 기반 후속 질문 응답
 
 ---
 
