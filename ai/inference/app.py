@@ -359,6 +359,33 @@ def _generate_gradcam(image: Image.Image, input_tensor: torch.Tensor) -> str:
         return ""
 
 
+# ── 헬퍼: URL 안전성 검사 ────────────────────────────────────────
+
+def _is_safe_url(url: str) -> bool:
+    """사설 IP·localhost 차단 — SSRF 기본 가드.
+
+    scheme이 http/https이고 사설 대역·루프백 주소가 아닌 경우에만 True.
+
+    Args:
+        url: 검사할 URL 문자열
+
+    Returns:
+        bool: 안전한 URL이면 True
+    """
+    if not url:
+        return False
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        host = parsed.hostname or ""
+        _BLOCKED_PREFIXES = ("localhost", "127.", "10.", "192.168.", "172.", "169.254.", "::1", "0.")
+        return not any(host.startswith(b) for b in _BLOCKED_PREFIXES)
+    except (ValueError, AttributeError):
+        return False
+
+
 # ── 헬퍼: 이미지 유효성 검사 ─────────────────────────────────────
 
 def _validate_image(file) -> Tuple[Optional[Image.Image], Optional[str]]:
@@ -523,6 +550,9 @@ def chat():
 
     image_b64, image_media_type = None, "image/jpeg"
     image_url = data.get("image_url", "").strip()
+    if image_url and not _is_safe_url(image_url):
+        logger.warning("[chat] 허용되지 않은 image_url — 텍스트만 진행")
+        image_url = ""
     if image_url:
         try:
             req = urllib.request.Request(image_url, headers={"User-Agent": "SkinAI/1.0"})

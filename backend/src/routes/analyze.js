@@ -9,7 +9,20 @@ const supabase = require('../config/supabase');
 const { applyMaskingPipeline } = require('../utils/masking');
 const { HTTP_STATUS, ERROR_MESSAGES, STORAGE_BUCKETS } = require('../constants');
 
-const FLASK_URL = `http://localhost:${process.env.FLASK_PORT || 5001}`;
+const FLASK_URL = process.env.AI_SERVICE_URL || `http://localhost:${process.env.FLASK_PORT || 5001}`;
+
+// Supabase Storage URL만 허용 — SSRF 방지
+const _isAllowedImageUrl = (url) => {
+  const supabaseUrl = process.env.SUPABASE_URL || '';
+  if (!supabaseUrl || !url) return false;
+  try {
+    const { hostname } = new URL(url);
+    const allowedHost = new URL(supabaseUrl).hostname;
+    return hostname === allowedHost;
+  } catch {
+    return false;
+  }
+};
 const UPLOAD_MAX_BYTES = Number(process.env.UPLOAD_MAX_BYTES || 10 * 1024 * 1024);
 const ALLOWED_UPLOAD_MIME = ['image/jpeg', 'image/png'];
 
@@ -83,7 +96,7 @@ router.post('/upload', authenticateToken, upload.single('image'), async (req, re
     if (err.message && err.message.includes('파일만 허용')) {
       return res.status(400).json({ message: err.message });
     }
-    res.status(500).json({ message: err.message || '처리 중 오류가 발생했습니다.' });
+    res.status(500).json({ message: ERROR_MESSAGES.SERVER_ERROR });
   }
 });
 
@@ -91,6 +104,9 @@ router.post('/upload', authenticateToken, upload.single('image'), async (req, re
 router.post('/run', authenticateToken, async (req, res) => {
   const { imageUrl } = req.body;
   if (!imageUrl) return res.status(400).json({ success: false, error: 'imageUrl이 필요합니다.' });
+  if (!_isAllowedImageUrl(imageUrl)) {
+    return res.status(400).json({ success: false, error: '허용되지 않은 이미지 URL입니다.' });
+  }
 
   try {
     const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 10000 });

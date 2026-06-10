@@ -5,6 +5,7 @@ const nodemailer = require('nodemailer');
 
 const supabase = require('../config/supabase');
 const { authenticateToken } = require('../middleware/auth');
+const { authLimiter } = require('../middleware/rateLimiter');
 const {
   HTTP_STATUS, ERROR_MESSAGES, AUTH_CONFIG, STORAGE_BUCKETS,
 } = require('../constants');
@@ -72,7 +73,7 @@ const _sendEmailChangeCodeMail = (toEmail, code) => transporter.sendMail({
 // ─────────────────────────────────────────────────────
 // 회원가입
 // ─────────────────────────────────────────────────────
-router.post('/signup', async (req, res) => {
+router.post('/signup', authLimiter, async (req, res) => {
   const { name, email, password, role, affiliation, year, bio } = req.body;
 
   if (!name || !email || !password || !role || !affiliation) {
@@ -138,7 +139,7 @@ router.get('/check-email', async (req, res) => {
 // ─────────────────────────────────────────────────────
 // 로그인
 // ─────────────────────────────────────────────────────
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.REQUIRED_FIELDS });
@@ -189,7 +190,7 @@ router.post('/logout', authenticateToken, async (req, res) => {
 // ─────────────────────────────────────────────────────
 // 비밀번호 찾기 — 재설정 링크 발송
 // ─────────────────────────────────────────────────────
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authLimiter, async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.EMAIL_REQUIRED });
 

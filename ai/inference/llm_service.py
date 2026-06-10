@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # ── 상수 (CLAUDE.md 코딩 규칙 ① 하드코딩 금지) ───────────────────
 DEFAULT_MODEL = "claude-sonnet-4-6"
+DEFAULT_OOD_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_MAX_TOKENS = 4096
 DEFAULT_MAX_TOKENS_CHAT = 1536
 DEFAULT_TIMEOUT_SEC = 45
@@ -210,7 +211,7 @@ def check_is_skin_image(image: "Image") -> Optional[bool]:
 
     try:
         response = client.with_options(timeout=ood_timeout).messages.create(
-            model=os.environ.get("LLM_MODEL_OOD", "claude-haiku-4-5-20251001"),
+            model=os.environ.get("LLM_MODEL_OOD", DEFAULT_OOD_MODEL),
             max_tokens=5,
             system=(
                 "이미지가 사람의 피부 또는 피부 병변(여드름·발진·반점·습진·상처 등)을 찍은 사진이면 'YES', "

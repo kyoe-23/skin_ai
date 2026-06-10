@@ -7,12 +7,16 @@ const authRoutes    = require('./routes/auth');
 const analyzeRoutes = require('./routes/analyze');
 const recordsRoutes = require('./routes/records');
 const usersRoutes   = require('./routes/users');
+const { apiLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
 // ── 미들웨어 ──
-app.use(cors());
+const _corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000')
+  .split(',').map(o => o.trim()).filter(Boolean);
+app.use(cors({ origin: _corsOrigins }));
 app.use(express.json());
+app.use('/api/', apiLimiter);
 
 // ── 정적 파일 서빙 ──
 app.use(express.static(path.join(__dirname, '../../frontend/html')));

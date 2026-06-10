@@ -48,7 +48,7 @@ const ERROR_MESSAGES = Object.freeze({
 // 인증 설정
 const AUTH_CONFIG = Object.freeze({
   BCRYPT_ROUNDS:          Number(process.env.BCRYPT_ROUNDS || 12),
-  JWT_EXPIRES_IN:         process.env.JWT_EXPIRE || '1h',
+  JWT_EXPIRES_IN:         process.env.JWT_EXPIRE || '24h',
   PASSWORD_MIN_LENGTH:    Number(process.env.PASSWORD_MIN_LENGTH || 8),
   PASSWORD_RESET_TTL_MS:  Number(process.env.PASSWORD_RESET_TTL_MS || 15 * 60 * 1000),
   EMAIL_CODE_TTL_MS:      Number(process.env.EMAIL_CODE_TTL_MS     || 5  * 60 * 1000),
